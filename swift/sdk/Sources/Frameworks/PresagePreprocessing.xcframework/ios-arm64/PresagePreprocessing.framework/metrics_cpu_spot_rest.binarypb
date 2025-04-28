@@ -1,0 +1,4 @@
+
+ˆPreprocessingCpuSpotJsonINPUT_VIDEO:input_videoRECORDING:recording"OUTPUT_VIDEO:output_video"TIME_LEFT:time_left_s"STATUS_CODE:status_code"BLUE_TOOTH:blue_tooth"#PREPROCESSED_DATA:preprocessed_data"+DENSE_FACEMESH_POINTS:dense_facemesh_points*ENABLE_BP:enable_phasic_bp*API_KEY:api_key*MODEL_DIRECTORY:model_directory*SAVE_ROI_IMAGE:save_roi_image*SPOT_DURATION:spot_duration_s
+pSpotMetricsRestCalculator#PREPROCESSED_DATA:preprocessed_data"METRICS_BUFFER:metrics_buffer*API_KEY:api_keyRinput_videoRRECORDING:recordingzoutput_videozstatus_codeztime_left_sz
+blue_toothzdense_facemesh_pointszMETRICS_BUFFER:metrics_buffer‚spot_duration_s‚enable_phasic_bp‚API_KEY:api_key‚MODEL_DIRECTORY:model_directory‚SAVE_ROI_IMAGE:save_roi_image
