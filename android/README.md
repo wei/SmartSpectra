@@ -2,7 +2,7 @@
 
 ## Integration Guide Overview
 
-This guide provides instructions for integrating and utilizing the Presage SmartSpectra SDK publicly hosted on Maven in your Android application to measure physiology metrics from a 30-second measurement using the mobile device's camera.
+This guide provides instructions for integrating and utilizing the Presage SmartSpectra SDK publicly hosted on Maven in your Android application to measure physiology metrics.
 
 The app contained in this repo is an example of pulling and using the SmartSpectra SDK from Maven. It should run out of the box as long as your API key is provided.
 
@@ -12,8 +12,7 @@ The app contained in this repo is an example of pulling and using the SmartSpect
 - [Quick Start for Android demo app](#quick-start-guide-to-using-the-demo-app)
 - [Integration in your app](#integration-in-your-own-app)
 - [Usage](#usage)
-- [Troubleshooting](#troubleshooting)
-- [Known Bugs](#known-bugs)
+- [Bugs & Troubleshooting](#bugs--troubleshooting)
 
 ## Prerequisites
 
@@ -393,7 +392,7 @@ try {
 }
 ```
 
-## Troubleshooting
+## Bugs & Troubleshooting
 
 For additional support, contact <[support@presagetech.com](mailto:support@presagetech.com)> or [submit a GitHub issue](https://github.com/Presage-Security/SmartSpectra/issues)
 
@@ -403,7 +402,3 @@ If, after updating the framework, you encounter something like this:
 OR the `R` value in `demo-app/src/main/java/com/presagetech/smartspectra_example/MainActivity.kt` stops getting resolved by the AndroidStudio linter,
 
 Run `Sync Project With Gradle Files` (the little icon in the top right corner with left-down-pointing arrow and some animal, possibly an elephant).
-
-### Known Bugs
-
-- Currently, there are no known bugs. If you encounter an issue, please contact support or report it.
