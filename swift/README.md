@@ -12,8 +12,7 @@ The app contained in this repo is an example of using the SmartSpectra SDK and s
 - [Quick Start for iOS demo app](#quick-start-for-ios-demo-app)
 - [Integration in your app](#integration-in-your-own-app)
 - [Usage](#usage)
-- [Troubleshooting](#troubleshooting)
-- [Known Bugs](#known-bugs)
+- [Bugs & Troubleshooting](#bugs--troubleshooting)
 
 ## Prerequisites
 
@@ -420,10 +419,6 @@ Since the mesh points are published you can also use `combine` to subscribe to t
 
 We do not recommend landscape support. We recommend removing the "Landscape Left," "Landscape Right," and "Portrait Upside Down" modes from your supported interface orientations.
 
-## Troubleshooting
+## Bugs & Troubleshooting
 
 For additional support, contact <[support@presagetech.com](mailto:support@presagetech.com)> or submit a [Github Issue](https://github.com/Presage-Security/SmartSpectra/issues)
-
-## Known Bugs
-
-- Currently, there are no known bugs. If you encounter an issue, please contact support or report it.

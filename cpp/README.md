@@ -16,7 +16,7 @@ This repository hosts a private SDK for measuring heart and respiration rates fo
    - [Setting Up CMake](#setting-up-cmake)
    - [Using a Custom OnMetricsOutput Callback](#using-a-custom-onmetricsoutput-callback)
    - [Using a Custom OnVideoOutput Callback](#using-a-custom-onvideooutput-callback)
- - [Troubleshooting](#troubleshooting)
+ - [Bugs & Troubleshooting](#bugs--troubleshooting)
 
 ## Quick Start
 
@@ -164,6 +164,6 @@ More examples, tutorials, and reference documentation are coming soon!
 See the [Building & Packaging on Ubuntu / Linux Mint](docs/build_linux.md) section for more details.
  - Parties that are interested in using C++ SDK on macOS: please refer to [Building SmartSpectra SDK on macOS](docs/build_macos.md). 
 
-## Troubleshooting
+## Bugs & Troubleshooting
 
 For additional support, contact <[support@presagetech.com](mailto:support@presagetech.com)> or [submit a GitHub issue](https://github.com/Presage-Security/SmartSpectra/issues)
