@@ -77,6 +77,7 @@ ABSL_FLAG(int, start_time_offset_ms, 0,
 ABSL_FLAG(bool, scale_input, true,
           "If true, uses input scaling in the ImageTransformationCalculator within the graph.");
 ABSL_FLAG(bool, enable_phasic_bp, false, "If true, enable the phasic blood pressure computation.");
+ABSL_FLAG(bool, enable_edge_metrics, false, "If true, enable edge metrics in the graph.");
 ABSL_FLAG(bool, print_graph_contents, false, "If true, print the graph contents.");
 ABSL_FLAG(int, verbosity, 1, "Verbosity level -- raise to print more.");
 ABSL_FLAG(std::string, api_key, "",
@@ -112,19 +113,20 @@ ABSL_FLAG(std::string, output_directory, "out",
 ABSL_FLAG(bool, enable_hud, true, "If true, enables metrics trace plotting & rate display HUD.");
 // endregion ===========================================================================================================
 
-
 absl::Status RunRestContinuousEdge(
     settings::Settings<settings::OperationMode::Continuous, settings::IntegrationMode::Rest>& settings
 ) {
     spectra::container::CpuContinuousRestForegroundContainer container(settings);
     bool enable_hud = absl::GetFlag(FLAGS_enable_hud);
+    bool enable_edge_metrics = absl::GetFlag(FLAGS_enable_edge_metrics);
     bool save_to_disk = absl::GetFlag(FLAGS_save_metrics_to_disk);
     std::string output_directory = absl::GetFlag(FLAGS_output_directory);
     // assumes frame/output image is wider than 1270 px and taller than 410 px, adjust as needed
     spectra::gui::OpenCvHud hud(10, 0, 1260, 400);
+    spectra::gui::OpenCvTracePlotter edge_metrics_plotter(10, 450, 940, 100);
 
 
-    container.OnMetricsOutput =
+    container.OnCoreMetricsOutput =
         [&settings, &hud, &enable_hud, &save_to_disk, &output_directory](
         const presage::physiology::MetricsBuffer& metrics_buffer,
         int64_t timestamp_milliseconds
@@ -146,7 +148,7 @@ absl::Status RunRestContinuousEdge(
         }
         if (settings.verbosity_level > 1) {
             std::stringstream metrics_output;
-            metrics_output << "Received metrics from server at timestamp " << timestamp_milliseconds;
+            metrics_output << "Received metrics from Physiology Core server at timestamp " << timestamp_milliseconds;
             if (settings.verbosity_level > 2) {
                 metrics_output << ": " << metrics_json_string << std::endl;
             } else {
@@ -162,10 +164,51 @@ absl::Status RunRestContinuousEdge(
 
     if (enable_hud) {
         container.OnVideoOutput =
-            [&hud](cv::Mat& output_frame, int64_t timestamp_milliseconds) {
+            [&hud, &enable_edge_metrics, &edge_metrics_plotter]
+                (cv::Mat& output_frame, int64_t timestamp_milliseconds) {
                 auto status = hud.Render(output_frame);
                 if (!status.ok()) {
                     return status;
+                }
+                if (enable_edge_metrics){
+                    auto status = edge_metrics_plotter.Render(output_frame, cv::Scalar(0, 165, 255));
+                }
+                if (!status.ok()){
+                    return status;
+                }
+                return absl::OkStatus();
+            };
+    }
+
+    if(enable_edge_metrics) {
+        container.OnEdgeMetricsOutput =
+            [&settings, &edge_metrics_plotter](const presage::physiology::Metrics& metrics) {
+
+
+                const auto& upper_trace = metrics.breathing().upper_trace();
+
+                if (!upper_trace.empty()) {
+#ifdef PLOT_EDGE_TRACE_ACCURATE
+                    const auto& first_measurement = *upper_trace.begin();
+                    if(first_measurement.stable()){
+                        edge_metrics_plotter.UpdateTraceWithSample(first_measurement);
+                    }
+#else
+                    edge_metrics_plotter.UpdateTraceWithSample(*upper_trace.rbegin());
+#endif
+                }
+                if (settings.verbosity_level > 2) {
+                    std::string metrics_json_string;
+                    google::protobuf::util::JsonPrintOptions options;
+                    google::protobuf::util::MessageToJsonString(metrics, &metrics_json_string, options);
+                    std::stringstream metrics_output;
+                    metrics_output << "Computed new metrics on edge";
+                    if (settings.verbosity_level > 3) {
+                        metrics_output << ": " << metrics_json_string << std::endl;
+                    } else {
+                        metrics_output << "." << std::endl;
+                    }
+                    std::cout << metrics_output.str();
                 }
                 return absl::OkStatus();
             };
@@ -216,8 +259,9 @@ int main(int argc, char** argv) {
         absl::GetFlag(FLAGS_scale_input),
         /*binary_graph=*/true,
         absl::GetFlag(FLAGS_enable_phasic_bp),
-        absl::GetFlag(FLAGS_print_graph_contents),
         /*enable_dense_facemesh_points=*/false,
+        absl::GetFlag(FLAGS_enable_edge_metrics),
+        absl::GetFlag(FLAGS_print_graph_contents),
         absl::GetFlag(FLAGS_verbosity),
         settings::ContinuousSettings{
             absl::GetFlag(FLAGS_buffer_duration)

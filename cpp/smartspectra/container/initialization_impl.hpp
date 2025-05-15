@@ -54,12 +54,14 @@ static void AddGeneralSidePackets(
     std::map<std::string, mediapipe::Packet>& input_side_packets,
     const settings::GeneralSettings& settings
 ) {
-        input_side_packets[pe::graph::input_side_packets::kEnablePhasicBp] =
-                mediapipe::MakePacket<bool>(settings.enable_phasic_bp);
-        input_side_packets[pe::graph::input_side_packets::kEnableDenseFaceMeshPoints] =
-                mediapipe::MakePacket<bool>(settings.enable_dense_facemesh_points);
-        input_side_packets[pe::graph::input_side_packets::kModelDirectory] =
-                mediapipe::MakePacket<std::string>(PHYSIOLOGY_EDGE_MODEL_DIRECTORY);
+    input_side_packets[pe::graph::input_side_packets::kEnablePhasicBp] =
+            mediapipe::MakePacket<bool>(settings.enable_phasic_bp);
+    input_side_packets[pe::graph::input_side_packets::kEnableDenseFaceMeshPoints] =
+            mediapipe::MakePacket<bool>(settings.enable_dense_facemesh_points);
+    input_side_packets[pe::graph::input_side_packets::kEnableEdgeMetrics] =
+            mediapipe::MakePacket<bool>(settings.enable_edge_metrics);
+    input_side_packets[pe::graph::input_side_packets::kModelDirectory] =
+            mediapipe::MakePacket<std::string>(PHYSIOLOGY_EDGE_MODEL_DIRECTORY);
 }
 
 template<settings::OperationMode TOperationMode, settings::IntegrationMode TIntegrationMode, bool TLog>
@@ -286,6 +288,9 @@ absl::Status InitializeVideoSink(
                     cv::CAP_GSTREAMER, 0, output_fps, output_resolution, true
                 );
                 break;
+            default:
+                return absl::InvalidArgumentError(absl::StrCat("Unsupported video sink mode with int code ",
+                                                  static_cast<int>(video_sink_mode)));
         }
         RET_CHECK(stream_writer.isOpened());
     }

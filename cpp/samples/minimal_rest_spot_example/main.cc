@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
     settings.spot.spot_duration_s = 30;
 
     spectra::container::SpotRestForegroundContainer<DeviceType::Cpu> container(settings);
-    container.OnMetricsOutput = [](const presage::physiology::MetricsBuffer& metrics, int64_t timestamp_microseconds) {
+    container.OnCoreMetricsOutput = [](const presage::physiology::MetricsBuffer& metrics, int64_t timestamp_microseconds) {
         std::string metrics_json;
         google::protobuf::util::JsonPrintOptions options;
         options.add_whitespace = true;

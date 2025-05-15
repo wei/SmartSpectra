@@ -22,8 +22,6 @@
 // === standard library includes (if any) ===
 // === third-party includes (if any) ===
 #include <mediapipe/framework/port/opencv_core_inc.h>
-#include <physiology/modules/messages/status.h>
-#include <physiology/modules/messages/metrics.h>
 // === local includes (if any) ===
 #include "container.hpp"
 
@@ -46,7 +44,6 @@ public:
     bool GraphIsRunning() const;
     bool ContainerIsInitialized() const { return this->initialized; };
 
-
     absl::Status Initialize() override;
 
     absl::Status StartGraph();
@@ -56,17 +53,6 @@ public:
     absl::Status SetRecording(bool on);
 
     absl::Status AddFrameWithTimestamp(const cv::Mat& frame_rgb, int64_t frame_timestamp_μs);
-
-    //TODO: move to base class (and remove from foreground container)
-    //TODO: add setters and make protected
-    // if needed, set to a callback that handles preprocessing status changes
-    std::function<absl::Status(physiology::StatusCode)> OnStatusChange =
-        [](physiology::StatusCode status_code){ return absl::OkStatus(); };
-
-    //TODO: add setters and make protected
-    // if needed, set to a callback that handles preprocessing status changes
-    std::function<absl::Status(const physiology::MetricsBuffer&, int64_t input_timestamp)> OnMetricsOutputCallback =
-        [](const physiology::MetricsBuffer&, int64_t input_timestamp){ return absl::OkStatus(); };
 
     absl::Status SetOnBluetoothCallback(std::function<absl::Status(double)> on_bluetooth);
 

@@ -36,7 +36,7 @@ void OpenCvHud::UpdateWithNewMetrics(const physiology::MetricsBuffer& new_metric
     if (!pulse_rate_repeated_field.empty()) {
         this->pulse_group->rate = pulse_rate_repeated_field.Get(pulse_rate_repeated_field.size() - 1);
         this->pulse_group->rate_is_high_confidence = is_pulse_high_confidence(this->pulse_group->rate.confidence());
-        this->pulse_group->trace_plotter.UpdateTrace(new_metrics.pulse().trace());
+        this->pulse_group->trace_plotter.UpdateTraceWithSampleRange(new_metrics.pulse().trace());
     }
 
     auto breathing_rate_repeated_field = new_metrics.breathing().rate();
@@ -44,7 +44,7 @@ void OpenCvHud::UpdateWithNewMetrics(const physiology::MetricsBuffer& new_metric
         this->upper_breathing_group->rate = breathing_rate_repeated_field.Get(breathing_rate_repeated_field.size() - 1);
         this->upper_breathing_group->rate_is_high_confidence = is_breathing_high_confidence(this->upper_breathing_group
                                                                                                 ->rate.confidence());
-        this->upper_breathing_group->trace_plotter.UpdateTrace(new_metrics.breathing().upper_trace());
+        this->upper_breathing_group->trace_plotter.UpdateTraceWithSampleRange(new_metrics.breathing().upper_trace());
         // These two code lines are a little weird right now
         // (but I guess OK for now, since its expected to be fixed in Core later)
         // Since we don't yet have a separate lower breathing rate returned by Core,
@@ -56,7 +56,7 @@ void OpenCvHud::UpdateWithNewMetrics(const physiology::MetricsBuffer& new_metric
         this->lower_breathing_group->rate = this->upper_breathing_group->rate;
     }
 
-    this->lower_breathing_group->trace_plotter.UpdateTrace(new_metrics.breathing().lower_trace());
+    this->lower_breathing_group->trace_plotter.UpdateTraceWithSampleRange(new_metrics.breathing().lower_trace());
 }
 
 const float OpenCvHud::no_rate_value_to_display = -1.0f;

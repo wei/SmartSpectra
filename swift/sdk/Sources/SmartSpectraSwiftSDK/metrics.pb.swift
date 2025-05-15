@@ -109,6 +109,18 @@ public struct Presage_Physiology_Pulse {
   fileprivate var _strict: Presage_Physiology_Strict? = nil
 }
 
+public struct Presage_Physiology_Trace {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var sample: [Presage_Physiology_Measurement] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public struct Presage_Physiology_Breathing {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -263,18 +275,41 @@ public struct Presage_Physiology_MetricsBuffer {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
+public struct Presage_Physiology_Metrics {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var breathing: Presage_Physiology_Breathing {
+    get {return _breathing ?? Presage_Physiology_Breathing()}
+    set {_breathing = newValue}
+  }
+  /// Returns true if `breathing` has been explicitly set.
+  public var hasBreathing: Bool {return self._breathing != nil}
+  /// Clears the value of `breathing`. Subsequent reads from it will return its default value.
+  public mutating func clearBreathing() {self._breathing = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _breathing: Presage_Physiology_Breathing? = nil
+}
+
 #if swift(>=5.5) && canImport(_Concurrency)
 extension Presage_Physiology_Measurement: @unchecked Sendable {}
 extension Presage_Physiology_DetectionStatus: @unchecked Sendable {}
 extension Presage_Physiology_MeasurementWithConfidence: @unchecked Sendable {}
 extension Presage_Physiology_Strict: @unchecked Sendable {}
 extension Presage_Physiology_Pulse: @unchecked Sendable {}
+extension Presage_Physiology_Trace: @unchecked Sendable {}
 extension Presage_Physiology_Breathing: @unchecked Sendable {}
 extension Presage_Physiology_BloodPressure: @unchecked Sendable {}
 extension Presage_Physiology_Landmarks: @unchecked Sendable {}
 extension Presage_Physiology_Face: @unchecked Sendable {}
 extension Presage_Physiology_Metadata: @unchecked Sendable {}
 extension Presage_Physiology_MetricsBuffer: @unchecked Sendable {}
+extension Presage_Physiology_Metrics: @unchecked Sendable {}
 #endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
@@ -500,6 +535,38 @@ extension Presage_Physiology_Pulse: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.trace != rhs.trace {return false}
     if lhs.pulseRespirationQuotient != rhs.pulseRespirationQuotient {return false}
     if lhs._strict != rhs._strict {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Presage_Physiology_Trace: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".Trace"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "sample"),
+  ]
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.sample) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.sample.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.sample, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Presage_Physiology_Trace, rhs: Presage_Physiology_Trace) -> Bool {
+    if lhs.sample != rhs.sample {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -848,6 +915,42 @@ extension Presage_Physiology_MetricsBuffer: SwiftProtobuf.Message, SwiftProtobuf
       }
       if !storagesAreEqual {return false}
     }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Presage_Physiology_Metrics: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".Metrics"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "breathing"),
+  ]
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._breathing) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._breathing {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Presage_Physiology_Metrics, rhs: Presage_Physiology_Metrics) -> Bool {
+    if lhs._breathing != rhs._breathing {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

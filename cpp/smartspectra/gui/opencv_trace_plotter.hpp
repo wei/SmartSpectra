@@ -36,7 +36,8 @@ public:
 
     ~OpenCvTracePlotter() = default;
 
-    void UpdateTrace(const google::protobuf::RepeatedPtrField<physiology::Measurement>& new_values);
+    void UpdateTraceWithSampleRange(const google::protobuf::RepeatedPtrField<physiology::Measurement>& new_values);
+    void UpdateTraceWithSample(const physiology::Measurement& new_value);
 
     absl::Status Render(
         cv::Mat& image,

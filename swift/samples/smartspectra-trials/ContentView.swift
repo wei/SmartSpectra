@@ -11,17 +11,21 @@ struct ContentView: View {
     @State var smartSpectraMode: SmartSpectraMode = .spot
     // Set the initial measurement duration. Valid range for measurement duration is between 20.0 and 120.0. Defaults to 30.0
     @State var measurementDuration: Double = 30.0
-    
+
     // App display configurations
     let isCustomizationEnabled: Bool = false
     let isFaceMeshEnabled: Bool = false
-    
+
     init() {
-        // (Required), If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root.
-        // (Required), Deprecated. set apiKey. API key from https://physiology.presagetech.com. Leave default if you want to use oauth. Oauth overrides api key
+        // (Required) Authentication. Only need to use one of the two options: API Key or Oauth below
+        // Authentication with Oauth currently only supported for apps in testflight/appstore
+        // Option 1: (authentication with api key) set apiKey. API key from https://physiology.presagetech.com. Leave default or remove if you want to use oauth. Oauth overrides api key
         let apiKey = "YOUR_API_KEY_HERE"
         sdk.setApiKey(apiKey)
-        
+
+        // Option 2: (Oauth) If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root.
+        // No additional code needed for Oauth
+
         // (optional) toggle display of camera and smartspectra mode controls in screening view
         sdk.showControlsInScreeningView(isCustomizationEnabled)
         // (Optional), set smartSpectraMode. Can be set to .spot or .continuous. Defaults to .continuous
@@ -41,7 +45,7 @@ struct ContentView: View {
         VStack {
             //add smartspectra view
             SmartSpectraView()
-            
+
             if (isCustomizationEnabled) {
                 // (Optional), example of how to switch camera at runtime
                 Button(cameraPosition == .front ? "Switch to Back Camera": "Switch to Front Camera", systemImage: "camera.rotate") {
@@ -61,7 +65,7 @@ struct ContentView: View {
                     }
                     sdk.setSmartSpectraMode(smartSpectraMode)
                 }
-                
+
                 // (Optional), example of how to change measurementDuration at runtime
                 Stepper(value: $measurementDuration, in: 20...120, step: 5) {
                     Text("Measurement Duration: \(measurementDuration.formatted(.number))")

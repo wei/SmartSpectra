@@ -43,7 +43,7 @@ To get started, follow the instructions for one of our currently supported platf
 
 ## Authentication
 
-You can obtain an API key from PresageTech's developer portal (<https://physiology.presagetech.com/>). We also support Oauth authentication for iOS and Android. Refer to the respective platform's README for more details.
+- We support API key authentication for CPP, iOS and Android. We also support Oauth authentication for iOS and Android. For detailed instructions on how to setup Authentication, refer to the dedicated [Authentication Docs](docs/authentication.md)
 
 ## Platform-Specific Guides
 

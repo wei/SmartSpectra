@@ -26,8 +26,6 @@
 #ifdef WITH_VIDEO_OUTPUT
 #include <mediapipe/framework/port/opencv_video_inc.h>
 #endif
-#include <physiology/modules/messages/status.pb.h>
-#include <physiology/modules/messages/metrics.pb.h>
 // === local includes (if any) ===
 #include "container.hpp"
 #include "output_stream_poller_wrapper.hpp"
@@ -49,19 +47,15 @@ public:
     absl::Status Initialize() override;
     virtual absl::Status Run();
 
-    // if needed, set to a callback that handles preprocessing status changes
-    std::function<absl::Status(physiology::StatusCode)> OnStatusChange =
-        [](physiology::StatusCode status_code){ return absl::OkStatus(); };
-    //TODO: possibly move this up to the base class and replace `SetOnMetricsOutputCallback` with the usage of this field instead.
-    // if needed, set to a callback that handles metrics that are received in the SDK
-    std::function<absl::Status(const physiology::MetricsBuffer&, int64_t input_timestamp)> OnMetricsOutput =
-        [](const physiology::MetricsBuffer&, int64_t input_timestamp){ return absl::OkStatus(); };
+    //TODO: add setters and make protected
     // if needed, set to a callback that handles video frames after they get preprocessed on the edge / in SDK
     std::function<absl::Status(cv::Mat& output_frame, int64_t input_timestamp)> OnVideoOutput =
         [](cv::Mat& output_frame, int64_t input_timestamp){ return absl::OkStatus(); };
+
 protected:
 
-    presage::smartspectra::container::output_stream_poller_wrapper::OutputStreamPollerWrapper metrics_poller;
+    presage::smartspectra::container::output_stream_poller_wrapper::OutputStreamPollerWrapper core_metrics_poller;
+    presage::smartspectra::container::output_stream_poller_wrapper::OutputStreamPollerWrapper edge_metrics_poller;
 
     virtual absl::Status InitializeOutputDataPollers();
     virtual absl::Status HandleOutputData(int64_t frame_timestamp);

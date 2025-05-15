@@ -30,7 +30,12 @@ class SmartSpectraSdk private constructor(private val appContext: Context) {
 
     internal fun getApiKey(): String {
         if (!::apiKey.isInitialized) {
-            throw IllegalStateException("API key is not initialized. Use .setApiKey() method on SmartSpectraButton to set the key")
+            val authHandler = AuthHandler.getInstance()
+            if (authHandler.isOAuthEnabled()) {
+                apiKey = ""
+            } else {
+                throw IllegalStateException("API key is not initialized. Use .setApiKey() method on SmartSpectraButton to set the key")
+            }
         }
         return apiKey
     }
@@ -78,6 +83,10 @@ class SmartSpectraSdk private constructor(private val appContext: Context) {
 
     fun setSmartSpectraMode(smartSpectraMode: SmartSpectraMode) {
         SmartSpectraSdkConfig.smartSpectraMode = smartSpectraMode
+    }
+
+    fun setEnableEdgeMetrics(enableEdgeMetrics: Boolean){
+        SmartSpectraSdkConfig.enableEdgeMetrics = enableEdgeMetrics;
     }
 
     fun setCameraPosition(@CameraSelector.LensFacing cameraPosition: Int) {

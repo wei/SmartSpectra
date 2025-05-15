@@ -43,6 +43,7 @@ internal class MediapipeGraphViewModel private constructor(context: Context) : V
     // == input side packets
     private val SPOT_DURATION_SIDE_PACKET_NAME = "spot_duration_s"
     private val ENABLE_BP_SIDE_PACKET_NAME = "enable_phasic_bp"
+    private val ENABLE_EDGE_METRICS_PACKET_NAME = "enable_edge_metrics"
     private val ENABLE_DENSE_FACEMESH_POINTS_PACKET_NAME = "enable_dense_facemesh_points"
     private val MODEL_DIRECTORY_SIDE_PACKET_NAME = "model_directory"
     private val API_KEY_SIDE_PACKET_NAME = "api_key"
@@ -107,7 +108,9 @@ internal class MediapipeGraphViewModel private constructor(context: Context) : V
                 SPOT_DURATION_SIDE_PACKET_NAME to it.packetCreator.createFloat64(SmartSpectraSdkConfig.spotDuration),
                 ENABLE_BP_SIDE_PACKET_NAME to it.packetCreator.createBool(SmartSpectraSdkConfig.ENABLE_BP),
                 ENABLE_DENSE_FACEMESH_POINTS_PACKET_NAME to it.packetCreator.createBool(true),
+                ENABLE_EDGE_METRICS_PACKET_NAME to it.packetCreator.createBool(SmartSpectraSdkConfig.enableEdgeMetrics),
                 MODEL_DIRECTORY_SIDE_PACKET_NAME to it.packetCreator.createString(SmartSpectraSdkConfig.MODEL_DIRECTORY),
+                // TODO: currently always need to set because of some graph changes. only set it for api key based auth once the graph is fixed
                 API_KEY_SIDE_PACKET_NAME to it.packetCreator.createString(viewModel.getApiKey()),
                 PREPROCESSED_DATA_BUFFER_DURATION_PACKET_NAME to it.packetCreator.createFloat64(SmartSpectraSdkConfig.preprocessedDataBufferDuration),
                 SAVE_ROI_IMAGE to it.packetCreator.createBool(SmartSpectraSdkConfig.save_roi_image),

@@ -25,6 +25,7 @@ class ImageConverter {
     func convertAsync(pixelBuffer: CVPixelBuffer, completion: @escaping (UIImage?) -> Void) {
         queue.async {
             autoreleasepool {
+                //TODO: fix warning about non Sendable to isolated closure
                 let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
                 let rect = CGRect(x: 0, y: 0,
                                   width: CVPixelBufferGetWidth(pixelBuffer),
@@ -110,20 +111,47 @@ public class SmartSpectraVitalsProcessor: NSObject, ObservableObject {
     }
 
     public func startProcessing() {
-        if coreIsRunning {
-            stopProcessing()
+        guard let authHandler = authHandler else {
+            print("AuthHandler is not available.")
+            return
         }
-        processingStatus = .idle
-        setupProcessing()
-        presageProcessing.start()
-        coreIsRunning = true
+
+        authHandler.startAuthWorkflow { [weak self] error in
+            guard let self = self else { return }
+
+            if let error = error {
+                print("Authentication failed with error: \(error)")
+                DispatchQueue.main.async {
+                    self.processingStatus = .error
+                }
+                return
+            }
+
+            if self.coreIsRunning {
+                self.stopProcessing()
+            }
+            DispatchQueue.main.async {
+                self.processingStatus = .idle
+            }
+            DispatchQueue.global(qos: .userInitiated).async {
+                self.setupProcessing()
+                self.presageProcessing.start()
+                DispatchQueue.main.async {
+                    self.coreIsRunning = true
+                }
+            }
+        }
     }
 
     public func stopProcessing() {
-        processingStatus = .idle
-        presageProcessing.stop()
-        imageOutput = nil
-        coreIsRunning = false
+        DispatchQueue.global(qos: .userInitiated).async {
+            self.presageProcessing.stop()
+            DispatchQueue.main.async {
+                self.processingStatus = .idle
+                self.imageOutput = nil
+                self.coreIsRunning = false
+            }
+        }
     }
 
     // Method to start recording
@@ -145,7 +173,9 @@ public class SmartSpectraVitalsProcessor: NSObject, ObservableObject {
 extension SmartSpectraVitalsProcessor: PresagePreprocessingDelegate {
 
     public func frameWillUpdate(_ tracker: PresagePreprocessing!, didOutputPixelBuffer pixelBuffer: CVPixelBuffer!, timestamp: Int) {
-        //TODO: optimize to not update image when in headless mode
+        // return early if running in headless mode to disable image output
+        // this saves on a lot of processing
+        guard !sdk.config.headlessMode else { return }
         // Convert the pixel buffer to UIImage asynchronously and publish it.
 
         //TODO: Need better approach here: Conversion to UIImage is not very efficient, and causes a lot of memory pressure.
@@ -195,13 +225,41 @@ extension SmartSpectraVitalsProcessor: PresagePreprocessingDelegate {
                 self.sdk.metricsBuffer = metricsBuffer
             }
 
+//            if sdk.config.smartSpectraMode == .continuous && sdk.config.showFps {
+//                //update fps based on metricsBuffer in continuous mode
+//                updateFps()
+//            }
+
+        } catch {
+            print("Failed to deserialize MetricsBuffer: \(error.localizedDescription)")
+        }
+    }
+
+
+    public func edgeMetricsChanged(_ tracker: PresagePreprocessing!, serializedBytes: Data) {
+        do {
+            // Deserialize the data directly into the Swift Protobuf object
+            let edgeMetrics = try Metrics(serializedBytes: serializedBytes)
+            // print("Received metrics buffer. metadata: \(String(describing: metricsBuffer.metadata))")
+            //            print("Pulse: \(String(describing: metricsBuffer.pulse.rate.last?.value)), Breathing: \(String(describing: metricsBuffer.breathing.rate.last?.value))")
+            // update metrics buffer
+            if sdk.config.smartSpectraMode == .spot {
+                DispatchQueue.main.async {
+                    self.processingStatus = .processed
+                }
+            }
+
+            DispatchQueue.main.async {
+                self.sdk.edgeMetrics = edgeMetrics
+            }
+
             if sdk.config.smartSpectraMode == .continuous && sdk.config.showFps {
-                //update fps based on metricsBuffer in continuous mode
+                //update fps based on edgeMetrics in continuous mode
                 updateFps()
             }
 
         } catch {
-            print("Failed to deserialize MetricsBuffer: \(error.localizedDescription)")
+            print("Failed to deserialize Metrics: \(error.localizedDescription)")
         }
     }
 

@@ -117,7 +117,7 @@ final class SmartSpectraButtonViewModel: ObservableObject {
     }
     
     private func showNoInternetConnectionAlert() {
-        if let rootViewController = UIApplication.shared.windows.first?.rootViewController {
+        if let rootViewController = findViewController() {
             let alert = UIAlertController(title: "No Internet Connection", message: "Please check your internet connection and try again.", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
             rootViewController.present(alert, animated: true, completion: nil)

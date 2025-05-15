@@ -127,6 +127,8 @@ struct GeneralSettings {
     bool binary_graph = true;
     bool enable_phasic_bp = false;
     bool enable_dense_facemesh_points = true;
+    // WARNING: enable_edge_metrics doesn't currently apply to spot mode
+    bool enable_edge_metrics = false;
     bool print_graph_contents = false;
     int verbosity_level = 0;
 };

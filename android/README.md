@@ -32,10 +32,14 @@ Git LFS functions similarly to `.gitignore`. The configuration for files managed
 
 ### Authentication
 
-You'll need an API key or Oauth config to use the SmartSpectra SDK. You can register for an account and obtain an API key at <https://physiology.presagetech.com>.
+You'll need either an API key or Oauth config to use the SmartSpectra Android SDK. You can find instructions on how to do that [here](../docs/authentication.md)
 
-- **API Key**: Add your API key to the [MainActivity.kt](samples/demo-app/src/main/java/com/presagetech/smartspectra_example/MainActivity.kt) file by replacing the placeholder `"YOUR_API_KEY"`.
-- **Oauth Config**: If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's `src/main/res/xml/` directory.
+- **API Key Option**: Add your API key to the [MainActivity.kt](samples/demo-app/src/main/java/com/presagetech/smartspectra_example/MainActivity.kt) file by replacing the placeholder `"YOUR_API_KEY"`.
+- **Oauth Config Option**: Currently only supported for playstore releases. With the downloaded Oauth xml config from obtained during [Authentication](../docs/authentication.md) and place into your app's `src/main/res/xml` directory.
+![xml file location in repo](../docs/images/xml_location_in_repo.png)
+
+> **NOTE**
+> Oauth config is currently only supported for playstore releases.
 
 ## Quick Start Guide to Using the Demo App
 
@@ -59,7 +63,7 @@ To integrate the SmartSpectra SDK into your Android project, add the following d
 
 ```gradle
 dependencies {
-    implementation("com.presagetech:smartspectra:1.0.19")
+    implementation("com.presagetech:smartspectra:1.0.20")
 }
 ```
 
@@ -83,18 +87,18 @@ import com.presagetech.smartspectra.SmartSpectraSdk
 class MainActivity : AppCompatActivity() {
     private lateinit var smartSpectraView: SmartSpectraView
 
-    // define api key (get api token from https://physiology.presagetech.com/)
+    // (Required) Authentication. Only need to use one of the two options: API Key or OAuth below
+    // Authentication with OAuth is currently only supported for apps in the Play Store
+    // Option 1: (Authentication with API Key) Set the API key. Obtain the API key from https://physiology.presagetech.com. Leave default or remove if you want to use OAuth. OAuth overrides the API key.
     private var apiKey = "YOUR_API_KEY"
 
-    // get instance of SmartSpectraSdk and apply optional configurations
+    // Option 2: (OAuth) If you want to use OAuth, copy the OAuth config (`presage_services.xml`) from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your src/main/res/xml/ directory.
+    // No additional code is needed for OAuth.
+
     private val smartSpectraSdk: SmartSpectraSdk = SmartSpectraSdk.getInstance().apply {
         //Required configurations: Authentication
-        // Preferred Option: if you want to use presage_services.xml generated from https://physiology.presagetech.com/
-        // Add presage_services.xml to src/main/res/xml/
-        // Deprecated Option: If you want to use the api key from: https://physiology.presagetech.com/
-        // Note: if presage_services.xml is defined, it overrides api key
-        setApiKey(apiKey)
-
+        setApiKey(apiKey) // Use this if you are authenticating with an API key
+        // If OAuth is configured, it will automatically override the API key
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -126,17 +130,20 @@ class MainActivity : AppCompatActivity() {
     // measurement duration (valid ranges are between 20.0 and 120.0) Defaults to 30.0 when not set
     // For continuous SmartSpectra mode currently defaults to infinite
     private var measurementDuration = 30.0
-    // define api key (get api token from https://physiology.presagetech.com/)
+
+    // (Required) Authentication. Only need to use one of the two options: API Key or OAuth below
+    // Authentication with OAuth is currently only supported for apps in the Play Store
+    // Option 1: (Authentication with API Key) Set the API key. Obtain the API key from https://physiology.presagetech.com. Leave default or remove if you want to use OAuth. OAuth overrides the API key.
     private var apiKey = "YOUR_API_KEY"
+
+    // Option 2: (OAuth) If you want to use OAuth, copy the OAuth config (`presage_services.xml`) from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your src/main/res/xml/ directory.
+    // No additional code is needed for OAuth.
 
     // get instance of SmartSpectraSdk and apply optional configurations
     private val smartSpectraSdk: SmartSpectraSdk = SmartSpectraSdk.getInstance().apply {
         //Required configurations: Authentication
-        // Preferred Option: if you want to use presage_services.xml generated from https://physiology.presagetech.com/
-        // Add presage_services.xml to src/main/res/xml/
-        // Deprecated Option: If you want to use the api key from: https://physiology.presagetech.com/
-        // Note: if presage_services.xml is defined, it overrides api key
-        setApiKey(apiKey)
+        setApiKey(apiKey) // Use this if you are authenticating with an API key
+        // If OAuth is configured, it will automatically override the API key
 
         // Optional configurations
         // Valid range for spot time is between 20.0 and 120.0

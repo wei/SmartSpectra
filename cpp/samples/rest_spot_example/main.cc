@@ -109,7 +109,7 @@ absl::Status RunRestSpotApp(
     spectra::container::SpotRestForegroundContainer<TDeviceType> container(settings);
     bool save_to_disk = absl::GetFlag(FLAGS_save_metrics_to_disk);
     std::string output_directory = absl::GetFlag(FLAGS_output_directory);
-    container.OnMetricsOutput = [&settings,&save_to_disk, &output_directory](
+    container.OnCoreMetricsOutput = [&settings,&save_to_disk, &output_directory](
         const presage::physiology::MetricsBuffer& metrics_buffer,
         int64_t timestamp_milliseconds
     ) {
@@ -186,6 +186,7 @@ int main(int argc, char** argv) {
         /*binary_graph=*/true,
         absl::GetFlag(FLAGS_enable_phasic_bp),
         /*enable_dense_facemesh_points=*/false,
+        /*enable_edge_metrics*/false, // doesn't currently apply to spot mode
         absl::GetFlag(FLAGS_print_graph_contents),
         absl::GetFlag(FLAGS_verbosity),
         settings::SpotSettings{

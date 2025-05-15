@@ -14,5 +14,5 @@ android {
 
 dependencies {
     internalImplementation(project(":sdk"))
-    externalImplementation("com.presagetech:smartspectra:1.0.19")
+    externalImplementation("com.presagetech:smartspectra:1.0.20")
 }

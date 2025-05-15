@@ -26,8 +26,6 @@
 #include <mediapipe/framework/port/opencv_highgui_inc.h>
 #include <mediapipe/framework/formats/image_frame.h>
 #include <mediapipe/framework/formats/image_frame_opencv.h>
-#include <physiology/modules/messages/status.h>
-#include <physiology/modules/messages/metrics.h>
 #include <physiology/graph/stream_and_packet_names.h>
 // === local includes (if any) ===
 #include "foreground_container.hpp"
@@ -55,11 +53,6 @@ template<platform_independence::DeviceType TDeviceType, settings::OperationMode 
 ForegroundContainer<TDeviceType, TOperationMode, TIntegrationMode>::ForegroundContainer(
     SettingsType settings
 ): Base(settings),
-   OnStatusChange([](physiology::StatusCode status_code) {
-       LOG(INFO) << "Preprocessing input status changed. " << physiology::GetStatusDescription(status_code)
-                 << " Legacy/int status code: " << static_cast<int>(status_code);
-       return absl::OkStatus();
-   }),
    load_video(!this->settings.video_source.input_video_path.empty()),
    video_source(nullptr), keep_grabbing_frames(false) {}
 
@@ -85,15 +78,20 @@ const std::string ForegroundContainer<TDeviceType, TOperationMode, TIntegrationM
  * @return
  */
 template<platform_independence::DeviceType TDeviceType, settings::OperationMode TOperationMode, settings::IntegrationMode TIntegrationMode>
-absl::Status ForegroundContainer<TDeviceType, TOperationMode, TIntegrationMode>::HandleOutputData(int64_t frame_timestamp) {
-    bool got_metrics_output;
+absl::Status ForegroundContainer<TDeviceType,
+    TOperationMode,
+    TIntegrationMode>::HandleOutputData(int64_t frame_timestamp) {
+    bool got_core_metrics_output;
     physiology::MetricsBuffer metrics_buffer;
     MP_RETURN_IF_ERROR(ph::GetPacketContentsIfAny(
-        metrics_buffer, got_metrics_output, metrics_poller.Get(), pe::graph::output_streams::kMetricsBuffer,
+        metrics_buffer,
+        got_core_metrics_output,
+        this->core_metrics_poller.Get(),
+        pe::graph::output_streams::kMetricsBuffer,
         this->settings.verbosity_level > 2
     ));
-    if (got_metrics_output) {
-        MP_RETURN_IF_ERROR(this->OnMetricsOutput(metrics_buffer, frame_timestamp));
+    if (got_core_metrics_output) {
+        MP_RETURN_IF_ERROR(this->OnCoreMetricsOutput(metrics_buffer, frame_timestamp));
         if (TOperationMode == settings::OperationMode::Spot) {
             // reset to start state
             this->recording = false;
@@ -103,6 +101,24 @@ absl::Status ForegroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
                        this->video_source->SupportsExposureControls()) {
                 MP_RETURN_IF_ERROR(this->video_source->TurnOnAutoExposure());
             }
+        }
+    }
+    // A separate outer if-clause used here to increase the likelihood of compiler optimizing this out
+    // when we're in spot mode.
+    if (TOperationMode == settings::OperationMode::Continuous) {
+        if (this->settings.enable_edge_metrics) {
+            bool got_edge_metrics_output;
+            do {
+                physiology::Metrics edge_metrics;
+                MP_RETURN_IF_ERROR(ph::GetPacketContentsIfAny(
+                    edge_metrics, got_edge_metrics_output, this->edge_metrics_poller.Get(),
+                    pe::graph::output_streams::kEdgeMetrics,
+                    this->settings.verbosity_level > 2
+                ));
+                if (got_edge_metrics_output) {
+                    MP_RETURN_IF_ERROR(this->OnEdgeMetricsOutput(edge_metrics));
+                }
+            } while (got_edge_metrics_output);
         }
     }
     return absl::OkStatus();
@@ -117,7 +133,12 @@ absl::Status ForegroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
  */
 template<platform_independence::DeviceType TDeviceType, settings::OperationMode TOperationMode, settings::IntegrationMode TIntegrationMode>
 absl::Status ForegroundContainer<TDeviceType, TOperationMode, TIntegrationMode>::InitializeOutputDataPollers() {
-    return this->metrics_poller.Initialize(this->graph, pe::graph::output_streams::kMetricsBuffer);
+    MP_RETURN_IF_ERROR(this->core_metrics_poller.Initialize(this->graph, pe::graph::output_streams::kMetricsBuffer));
+    if (TOperationMode == settings::OperationMode::Spot) {
+        return absl::OkStatus();
+    } else {
+        return this->edge_metrics_poller.Initialize(this->graph, pe::graph::output_streams::kEdgeMetrics);
+    }
 }
 
 template<platform_independence::DeviceType TDeviceType, settings::OperationMode TOperationMode, settings::IntegrationMode TIntegrationMode>
@@ -334,10 +355,10 @@ absl::Status ForegroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
 
             // endregion ===============================================================================================
             if (this->settings.headless) {
-                if (!this->load_video){
+                if (!this->load_video) {
                     // if we loaded video, that means we started recording already.
                     // Otherwise, start recording iff status code is OK
-                    if (!this->recording && this->status_code == physiology::StatusCode::OK){
+                    if (!this->recording && this->status_code == physiology::StatusCode::OK) {
                         if (this->settings.video_source.auto_lock && this->video_source->SupportsExposureControls()) {
                             return this->video_source->TurnOffAutoExposure();
                         }

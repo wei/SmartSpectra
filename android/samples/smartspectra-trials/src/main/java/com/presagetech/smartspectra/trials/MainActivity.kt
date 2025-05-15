@@ -49,17 +49,20 @@ class MainActivity : AppCompatActivity() {
     // measurement duration (valid ranges are between 20.0 and 120.0) Defaults to 30.0 when not set
     // For continuous SmartSpectra mode currently defaults to infinite
     private var measurementDuration = 30.0
-    // define api key (get api token from https://physiology.presagetech.com/)
+
+    // (Required) Authentication. Only need to use one of the two options: API Key or OAuth below
+    // Authentication with OAuth is currently only supported for apps in the Play Store
+    // Option 1: (Authentication with API Key) Set the API key. Obtain the API key from https://physiology.presagetech.com. Leave default or remove if you want to use OAuth. OAuth overrides the API key.
     private var apiKey = "YOUR_API_KEY"
+
+    // Option 2: (OAuth) If you want to use OAuth, copy the OAuth config (`presage_services.xml`) from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your src/main/res/xml/ directory.
+    // No additional code is needed for OAuth.
 
     // get instance of SmartSpectraSdk and apply optional configurations
     private val smartSpectraSdk: SmartSpectraSdk = SmartSpectraSdk.getInstance().apply {
         //Required configurations: Authentication
-        // Preferred Option: if you want to use presage_services.xml generated from https://physiology.presagetech.com/
-        // Add presage_services.xml to src/main/res/xml/
-        // Deprecated Option: If you want to use the api key from: https://physiology.presagetech.com/
-        // Note: if presage_services.xml is defined, it overrides api key
-        setApiKey(apiKey)
+        setApiKey(apiKey) // Use this if you are authenticating with an API key
+        // If OAuth is configured, it will automatically override the API key
 
         // Optional configurations
         // Valid range for spot time is between 20.0 and 120.0

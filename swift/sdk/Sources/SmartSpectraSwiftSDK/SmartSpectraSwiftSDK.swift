@@ -8,6 +8,7 @@ import AVFoundation
 import SwiftUICore
 
 public typealias MetricsBuffer = Presage_Physiology_MetricsBuffer
+public typealias Metrics = Presage_Physiology_Metrics
 
 // Expose the data provider through your SDK's API
 public class SmartSpectraSwiftSDK: ObservableObject {
@@ -21,6 +22,7 @@ public class SmartSpectraSwiftSDK: ObservableObject {
             }
         }
     }
+    @Published public var edgeMetrics: Metrics?
 
     @Published internal var resultText: String = "No Results\n..."
     @Published internal var resultErrorText: String = ""
@@ -32,7 +34,16 @@ public class SmartSpectraSwiftSDK: ObservableObject {
         self.config.showFps = showFps
 
         // initiate app auth flow
-        AuthHandler.shared.startAuthWorkflow()
+        AuthHandler.shared.startAuthWorkflow { [weak self] error in
+            guard let self = self else { return }
+
+            if let error = error {
+                print("Authentication failed with error: \(error)")
+                self.updateErrorText("Authentication failed. Please try again.")
+            } else {
+                print("Authentication completed successfully.")
+            }
+        }
 
         // Uncomment this to use test server. Use with extreme caution. do not use this in production
         // useTestServer()
@@ -67,6 +78,10 @@ public class SmartSpectraSwiftSDK: ObservableObject {
 
     public func setApiKey(_ apiKey: String) {
         self.config.apiKey = apiKey
+    }
+
+    public func setHeadlessMode(_ headlessMode: Bool) {
+        self.config.headlessMode = headlessMode
     }
 
     private func updateResultText() {

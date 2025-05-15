@@ -22,12 +22,16 @@ The app contained in this repo is an example of using the SmartSpectra SDK and s
 
 ### Authentication
 
-You'll need an API key or Oauth config to use the SmartSpectra Swift SDK. You can register for an account and obtain an API key at <https://physiology.presagetech.com>.
+You'll need either an API key or Oauth config to use the SmartSpectra Swift SDK. You can find instructions on how to do that [here](../docs/authentication.md)
 
-- **API Key**: Add your API key to the [ContentView.swift](samples/demo-app/ContentView.swift) file by replacing the placeholder `"YOUR_API_KEY_HERE"`.
-- **Oauth Config**: If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root directory.
+- **API Key Option**: Add your API key to the [ContentView.swift](samples/demo-app/ContentView.swift) file by replacing the placeholder `"YOUR_API_KEY_HERE"`.
+- **Oauth Config Option**: With the downloaded Oauth plist config from obtained during [Authentication](../docs/authentication.md) and place into your app's root directory.
+![plist file location in repo](../docs/images/plist_location_in_repo.png)
 
-## Quick Start for iOS demo app
+> **Note**
+> Oauth Option is currently only supported for TestFlight/App Store releases.
+
+## Quick Start for iOS Demo App
 
 1. Clone the repository and open the SmartSpectra workspace in Xcode:
 
@@ -37,7 +41,7 @@ You'll need an API key or Oauth config to use the SmartSpectra Swift SDK. You ca
     ```
 
 2. Select the demo app target in Xcode.
-3. If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root. If you would like to use API key instead, navigate to [ContentView.swift](samples/demo-app/ContentView.swift) and replace the placeholder API key with your actual API key.
+3. Navigate to [ContentView.swift](samples/demo-app/ContentView.swift) and replace the placeholder API key with your actual API key obtained from PresageTech's developer portal (<https://physiology.presagetech.com/>) [See authentication](#authentication)
 4. Setup the signing and capabilities for the demo app target in Xcode. Make sure to select your development team and set a unique bundle identifier.
 5. Connect your iOS device to your computer.
 6. Select your device as the target in Xcode.
@@ -92,10 +96,14 @@ struct ContentView: View {
     @ObservedObject var sdk = SmartSpectraSwiftSDK.shared
 
     init() {
-        // (Required), If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root.
-        // (Required), Deprecated. set apiKey. API key from https://physiology.presagetech.com. Leave default if you want to use oauth. Oauth overrides api key
+        // (Required) Authentication. Only need to use one of the two options: API Key or Oauth below
+        // Authentication with Oauth currently only supported for apps in testflight/appstore
+        // Option 1: (authentication with api key) set apiKey. API key from https://physiology.presagetech.com. Leave default or remove if you want to use oauth. Oauth overrides api key
         let apiKey = "YOUR_API_KEY_HERE"
         sdk.setApiKey(apiKey)
+
+        // Option 2: (Oauth) If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root.
+        // No additional code needed for Oauth
 
     }
 
@@ -127,10 +135,14 @@ struct ContentView: View {
     let isFaceMeshEnabled: Bool = true
 
     init() {
-        // (Required), If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root.
-        // (Required), Deprecated. set apiKey. API key from https://physiology.presagetech.com. Leave default if you want to use oauth. Oauth overrides api key
+        // (Required) Authentication. Only need to use one of the two options: API Key or Oauth below
+        // Authentication with Oauth currently only supported for apps in testflight/appstore
+        // Option 1: (authentication with api key) set apiKey. API key from https://physiology.presagetech.com. Leave default or remove if you want to use oauth. Oauth overrides api key
         let apiKey = "YOUR_API_KEY_HERE"
         sdk.setApiKey(apiKey)
+
+        // Option 2: (Oauth) If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root.
+        // No additional code needed for Oauth
 
         // (optional) toggle display of camera and smartspectra mode controls in screening view
         sdk.showControlsInScreeningView(isCustomizationEnabled)
@@ -149,7 +161,7 @@ struct ContentView: View {
     var body: some View {
         // add smartspectra view
         SmartSpectraView()
-   }
+    }
 }
 ```
 
@@ -183,10 +195,14 @@ struct HeadlessSDKExample: View {
     @State private var isVitalMonitoringEnabled: Bool = false
 
     init() {
-        // (Required), If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root.
-        // (Required), Deprecated. set apiKey. API key from https://physiology.presagetech.com. Leave default if you want to use oauth. Oauth overrides api key
+        // (Required) Authentication. Only need to use one of the two options: API Key or Oauth below
+        // Authentication with Oauth currently only supported for apps in testflight/appstore
+        // Option 1: (authentication with api key) set apiKey. API key from https://physiology.presagetech.com. Leave default or remove if you want to use oauth. Oauth overrides api key
         let apiKey = "YOUR_API_KEY_HERE"
         sdk.setApiKey(apiKey)
+
+        // Option 2: (Oauth) If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root.
+        // No additional code needed for Oauth
     }
 
     var body: some View {

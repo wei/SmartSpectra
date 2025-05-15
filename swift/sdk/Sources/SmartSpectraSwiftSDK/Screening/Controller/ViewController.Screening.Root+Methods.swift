@@ -152,6 +152,7 @@ extension ViewController.Screening.Root {
     @objc private func recordButtonTapped() {
         if buttonState == .ready {
             // start auth workflow (this re-authenticates if expired)
+            // TODO: might no longer be necessary or convert to use closure before starting countdown
             AuthHandler.shared.startAuthWorkflow()
 
             startCountdownForRecording { [weak self] in

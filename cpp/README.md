@@ -14,9 +14,10 @@ This repository hosts a private SDK for measuring heart and respiration rates fo
  - [Examples](#examples)
  - [Developing Your Own Smart Spectra C++ Application](#developing-your-own-smart-spectra-c-application)
    - [Setting Up CMake](#setting-up-cmake)
-   - [Using a Custom OnMetricsOutput Callback](#using-a-custom-onmetricsoutput-callback)
+   - [Using a Custom OnCoreMetricsOutput Callback](#using-a-custom-oncoremetricsoutput-callback)
+   - [Using a Custom OnEdgeMetricsOutput Callback](#using-a-custom-onedgemetricsoutput-callback)
    - [Using a Custom OnVideoOutput Callback](#using-a-custom-onvideooutput-callback)
- - [Bugs & Troubleshooting](#bugs--troubleshooting)
+  - [Bugs & Troubleshooting](#bugs--troubleshooting)
 
 ## Quick Start
 
@@ -132,17 +133,28 @@ target_link_libraries(my_app
 )
 ```
 
-### Using a Custom OnMetricsOutput Callback
+### Using a Custom OnCoreMetricsOutput Callback
 
-Typically, you will want to do something with the vital data output from SmartSpectra.
+Typically, you will want to do something with the vitals data output from SmartSpectra & Physiology Core API.
 The following code demonstrates how you can add your own callback to process and/or display the data:
 ```C++
-container.OnMetricsOutput = [](const presage::physiology::MetricsBuffer& metrics, int64_t timestamp_microseconds) {
+container.OnCoreMetricsOutput = [](const presage::physiology::MetricsBuffer& metrics, int64_t timestamp_microseconds) {
     LOG(INFO) << "Got metrics from Physiology REST API: " << metrics;
     return absl::OkStatus();
 };
 ```
 You can see how the callback is used to format metrics as a JSON string in the [minimal_rest_spot_example app](samples/minimal_rest_spot_example/main.cc), how it is output to a file in the [rest_spot_example app](samples/rest_spot_example/main.cc), and how it is used to plot vitals data in real time in [rest_continuous_example app](samples/rest_continuous_example/main.cc).
+
+### Using a Custom OnEdgeMetricsOutput Callback
+
+Some metrics (namely the upper and lower breathing trace) are now available for computation on edge on a framerate basis. To enable this behavior, you need to set `enable_edge_metrics` to true in the `Settings` object you use to initialize the container (see [rest_continuous_example app](samples/rest_continuous_example/main.cc) for an example).
+The following code demonstrates how you can add your own callback to process and/or display this data:
+```C++
+container.OnEdgeMetricsOutput = [](const presage::physiology::Metrics& metrics) {
+    LOG(INFO) << "Computed metrics on edge: " << metrics;
+    return absl::OkStatus();
+}
+```
 
 ### Using a Custom OnVideoOutput Callback
 

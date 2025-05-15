@@ -64,7 +64,10 @@ absl::Status BackgroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
     this->operation_context.Reset();
 
     if (this->OnStatusChange == nullptr){
-        return absl::FailedPreconditionError("OnStatusChange callback is nullptr. Expecting a valid callback.");
+        return absl::FailedPreconditionError(
+            "OnStatusChange callback is nullptr. Expecting a valid callback. "
+            "Please ensure your callback doesn't go out of scope and get destroyed while the graph is running."
+        );
     }
 
     MP_RETURN_IF_ERROR(this->graph.ObserveOutputStream(
@@ -81,8 +84,11 @@ absl::Status BackgroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
         }
     ));
 
-    if (this->OnMetricsOutputCallback == nullptr) {
-        return absl::FailedPreconditionError("OnMetricsOutputCallback callback is nullptr. Expecting a valid callback.");
+    if (this->OnCoreMetricsOutput == nullptr) {
+        return absl::FailedPreconditionError(
+            "OnCoreMetricsOutput callback is nullptr. Expecting a valid callback."
+            "Please ensure your callback doesn't go out of scope and get destroyed while the graph is running."
+        );
     }
 
     MP_RETURN_IF_ERROR(this->graph.ObserveOutputStream(
@@ -91,11 +97,35 @@ absl::Status BackgroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
             if (!output_packet.IsEmpty()) {
                 auto metrics_buffer = output_packet.Get<physiology::MetricsBuffer>();
                 auto timestamp = output_packet.Timestamp();
-                return this->OnMetricsOutputCallback(metrics_buffer, timestamp.Value());
+                return this->OnCoreMetricsOutput(metrics_buffer, timestamp.Value());
             }
             return absl::OkStatus();
         }
     ));
+
+    // A separate outer if-clause used here to increase the likelihood of compiler optimizing this out
+    // when we're in spot mode.
+    if (TOperationMode == settings::OperationMode::Continuous){
+        if (this->settings.enable_edge_metrics) {
+            if (this->OnEdgeMetricsOutput == nullptr) {
+                return absl::FailedPreconditionError(
+                    "OnEdgeMetricsOutput callback is nullptr. Expecting a valid callback."
+                    "Please ensure your callback doesn't go out of scope and get destroyed while the graph is running."
+                );
+            }
+
+            MP_RETURN_IF_ERROR(this->graph.ObserveOutputStream(
+                physiology::edge::graph::output_streams::kEdgeMetrics,
+                [this](const mediapipe::Packet& output_packet) {
+                    if (!output_packet.IsEmpty()) {
+                        auto metrics_buffer = output_packet.Get<physiology::Metrics>();
+                        return this->OnEdgeMetricsOutput(metrics_buffer);
+                    }
+                    return absl::OkStatus();
+                }
+            ));
+        }
+    }
 
     MP_RETURN_IF_ERROR(this->graph.StartRun({}));
     MP_RETURN_IF_ERROR(this->graph.WaitUntilIdle());

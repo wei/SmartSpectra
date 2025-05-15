@@ -34,40 +34,45 @@ internal class AuthHandler {
         guard let plistData = plistData else { return false }
         return plistData["IS_OAUTH_ENABLED"] as? Bool ?? false
     }
+    private let authRunner = SerialTaskRunner()
 
     private init() {
         plistData = readPlist()
     }
 
-    internal func startAuthWorkflow() {
-        guard let plistData = plistData else { return }
-        // Only run flow if auth token has expired
-        guard isAuthTokenExpired(), isOauthEnabled else { return }
-
-        // Run auth flow in a async task
+    internal func startAuthWorkflow(completion: ((Error?) -> Void)? = nil) {
         Task {
-            var attempt = 0
-            let maxAttempts = 5
-            var delay: UInt64 = 1_000_000_000 // 1 second in nanoseconds
+            await authRunner.enqueue { [weak self] in
+                guard let self = self else { completion?(nil); return }
+                guard let plist = self.plistData else {
+                    completion?(AuthError.configurationFailed); return
+                }
+                guard self.isAuthTokenExpired(), self.isOauthEnabled else {
+                    completion?(nil); return
+                }
+                var attempt = 0
+                let maxAttempts = 5
+                var delay: UInt64 = 1_000_000_000 // 1 second in nanoseconds
 
-            while attempt < maxAttempts {
-                let result = await self.AuthWorkflow()
-                switch result {
-                case .success(let authToken):
-                    print("Successfully obtained access token from server.")
-                    SmartSpectraSwiftSDK.shared.updateErrorText("")
-                    return
-                case .failure(let error):
-                    //inform the user
-                    SmartSpectraSwiftSDK.shared.updateErrorText("Failed to authenticate. Please try again later.")
-                    print("Failed to complete App Authentication workflow: \(error)")
-                    attempt += 1
-                    if attempt < maxAttempts {
-                        print("Retrying in \(delay / 1_000_000_000) seconds...")
-                        try await Task.sleep(nanoseconds: delay)
-                        delay *= 2 // Exponential backoff
-                    } else {
-                        print("Max retry attempts reached. Aborting.")
+                while attempt < maxAttempts {
+                    let result = await self.AuthWorkflow()
+                    switch result {
+                        case .success(let authToken):
+                            print("Successfully obtained access token from server.")
+                            completion?(nil)
+                            return
+                        case .failure(let error):
+                            print("Failed to complete App Authentication workflow: \(error)")
+                            attempt += 1
+                            if attempt < maxAttempts {
+                                print("Retrying in \(delay / 1_000_000_000) seconds...")
+                                try? await Task.sleep(nanoseconds: delay)
+                                delay *= 2 // Exponential backoff
+                            } else {
+                                print("Max retry attempts reached. Aborting.")
+                                completion?(error)
+                                return
+                            }
                     }
                 }
             }
@@ -113,7 +118,22 @@ internal class AuthHandler {
             print("New App Attest key generated.")
             return newKeyId
         } catch {
-            print("Error generating App Attest key: \(error.localizedDescription)")
+            if (error as? DCError)?.code == .invalidKey {
+                print("Invalid key detected, removing from keychain")
+                try? keychainHelper.deleteKeyId()
+
+                // Retry generating the key once after deletion
+                do {
+                    let retryKeyId = try await service.generateKey()
+                    self.storeKeyId(retryKeyId)
+                    print("Retry successful: New App Attest key generated.")
+                    return retryKeyId
+                } catch {
+                    print("Retrying key generation failed: \(error.localizedDescription)")
+                }
+            } else {
+                print("Error generating App Attest key: \(error.localizedDescription)")
+            }
         }
         return nil
     }
@@ -126,17 +146,23 @@ internal class AuthHandler {
 
         do {
             let attestation = try await service.attestKey(keyId, clientDataHash: challengeHash)
-            // Encode the attestation Data to a Base64 string
-            let base64String = attestation.base64EncodedString()
-
             print("Attestation object received from app attest service")
             return attestation
         } catch {
-            print("Error during key attestation: \(error.localizedDescription)")
-            // TODO: Handle other error cases, add retry mechanism with exponential backoff for appropriate errors
-            if (error as? DCError)?.code == .invalidKey {
-                print("Invalid key detected, removing from keychain")
-                try? keychainHelper.deleteKeyId()
+            if let nsError = error as NSError?, nsError.domain == "com.apple.devicecheck.error" {
+                switch nsError.code {
+                    case 2: // invalidInput
+                        print("Invalid input detected during attestation. Possible malformed challenge or keyId.")
+                        // Consider deleting the keyId if it's suspected to be invalid
+                        try? keychainHelper.deleteKeyId()
+                    case 3: // invalidKey
+                        print("Invalid key detected during attestation, removing from keychain")
+                        try? keychainHelper.deleteKeyId()
+                    default:
+                        print("Unhandled DeviceCheck error: \(nsError.code)")
+                }
+            } else {
+                print("Error during key attestation: \(error.localizedDescription)")
             }
         }
         return nil

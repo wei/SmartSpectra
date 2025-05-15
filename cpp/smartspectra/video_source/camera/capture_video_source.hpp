@@ -52,9 +52,15 @@ public:
     absl::Status DecreaseExposure() override;
     bool SupportsExposureControls() override;
 
+    void UseNoTimestampConversion();
+    void UseUptimeTimestampConversion();
+
     int GetWidth() override;
     int GetHeight() override;
+
 private:
+    std::function<int64_t (int64_t input_timestamp_ms)> convert_timestamp_ms =
+        [](int64_t input_timestamp_ms) { return input_timestamp_ms; };
     absl::StatusOr<double> GetExposure();
     absl::Status ModifyExposure(int by);
     cv::VideoCapture capture;

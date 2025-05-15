@@ -26,6 +26,7 @@ internal class SmartSpectraSdkConfig: ObservableObject {
     internal var recordingDelay: Int = 3
     internal var cameraPosition: AVCaptureDevice.Position = .front
     internal var showControlsInScreeningView: Bool = true
+    internal var headlessMode: Bool = false
 
     // defaults to 30 second spot if configuration is not supplied
     internal init(smartSpectraMode: SmartSpectraMode = .continuous, duration: Double =  30.0) {

@@ -108,6 +108,9 @@ absl::Status CaptureCameraSource::Initialize(const presage::smartspectra::video_
     std::string camera_backend_name = pcam_cv::DeterminePreferredBackendNameForCamera(
         settings.device_index
     );
+    if (backend_to_use == cv::VideoCaptureAPIs::CAP_V4L2) {
+        this->UseUptimeTimestampConversion();
+    }
     LOG(INFO) << "Camera backend to use: " << camera_backend_name;
     // region ================================== CHECK PER-FRAME TIMESTAMP SUPPORT =================================
     LOG(INFO) << "Check if frame timestamps are supported by the camera capture interface...";
@@ -218,7 +221,7 @@ bool CaptureCameraSource::SupportsExactFrameTimestamp() const {
 
 int64_t CaptureCameraSource::GetFrameTimestamp() const {
     return this->capture_supports_timestamp ?
-           static_cast<int64_t>(this->capture.get(cv::CAP_PROP_POS_MSEC) * 1000.0) // milliseconds -> microseconds
+           static_cast<int64_t>(this->convert_timestamp_ms(this->capture.get(cv::CAP_PROP_POS_MSEC)) * 1000.0) // milliseconds -> microseconds
                                             :
            static_cast<int64_t>(
                std::chrono::duration_cast<std::chrono::microseconds>(
@@ -344,6 +347,32 @@ int CaptureCameraSource::GetWidth() {
 
 int CaptureCameraSource::GetHeight() {
     return static_cast<int>(this->capture.get(cv::CAP_PROP_FRAME_HEIGHT));
+}
+
+void CaptureCameraSource::UseNoTimestampConversion() {
+    this->convert_timestamp_ms = [](int64_t input_timestamp_ms) { return input_timestamp_ms; };
+}
+
+static int64_t monotonic_to_epoch_offset_ms = -1;
+static int64_t V4l2ConvertCaptureTimeToEpoch(int64_t v4l_ts_ms){
+
+    if(monotonic_to_epoch_offset_ms == -1){
+        struct timeval epoch_time;  gettimeofday(&epoch_time, NULL);
+        struct timespec  vs_time;  clock_gettime(CLOCK_MONOTONIC, &vs_time);
+
+        long uptime_ms = vs_time.tv_sec * 1000 + (long)  round(vs_time.tv_nsec / 1000000.0);
+        long epoch_ms = epoch_time.tv_sec * 1000 + (long) round(epoch_time.tv_usec / 1000.0);
+
+        // add this quantity to the CV_CAP_PROP_POS_MEC to get unix time stamped frames
+        monotonic_to_epoch_offset_ms = epoch_ms - uptime_ms;
+
+    }
+
+    return monotonic_to_epoch_offset_ms + v4l_ts_ms;
+}
+
+void CaptureCameraSource::UseUptimeTimestampConversion() {
+    this->convert_timestamp_ms = V4l2ConvertCaptureTimeToEpoch;
 }
 
 

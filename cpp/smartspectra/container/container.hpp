@@ -30,7 +30,8 @@
 #include <mediapipe/framework/calculator_graph.h>
 #include <physiology/modules/device_type.h>
 #include <physiology/modules/device_context.h>
-#include <physiology/modules/messages/status.pb.h>
+#include <physiology/modules/messages/status.h>
+#include <physiology/modules/messages/metrics.h>
 // === local includes (if any) ===
 #include "settings.hpp"
 #include "operation_context.hpp"
@@ -45,6 +46,21 @@ template<
 class Container {
 public:
     typedef container::settings::Settings<TOperationMode, TIntegrationMode> SettingsType;
+
+    //TODO: add setters and make protected
+    // if needed, set to a callback that handles preprocessing status changes
+    std::function<absl::Status(physiology::StatusCode)> OnStatusChange =
+        [](physiology::StatusCode status_code){ return absl::OkStatus(); };
+
+    //TODO: add setters and make protected
+    // if needed, set to a callback that handles new metrics output from core / API
+    std::function<absl::Status(const physiology::MetricsBuffer&, int64_t input_timestamp)> OnCoreMetricsOutput =
+        [](const physiology::MetricsBuffer&, int64_t input_timestamp){ return absl::OkStatus(); };
+
+    //TODO: add setters and make protected
+    // if needed, set to a callback that handles new metrics output from edge / local processing
+    std::function<absl::Status(const physiology::Metrics&)> OnEdgeMetricsOutput =
+        [](const physiology::Metrics&){ return absl::OkStatus(); };
 
     explicit Container(SettingsType settings);
 

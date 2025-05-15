@@ -27,6 +27,7 @@ internal object SmartSpectraSdkConfig {
         }
 
     internal var smartSpectraMode: SmartSpectraMode = SmartSpectraMode.CONTINUOUS
+    internal var enableEdgeMetrics: Boolean = false
 
     const val ENABLE_BP = false
     const val MODEL_DIRECTORY = "graph/models"

@@ -29,11 +29,11 @@ internal sealed class AuthResult {
 internal class AuthHandler private constructor(private val context: Context, private val config: Map<String, Any?>) {
     // Create an instance of a manager.
     private val integrityManager = IntegrityManagerFactory.create(context.applicationContext)
+    private val isOAuthEnabled: Boolean = config["oauth_enabled"] as? Boolean ?: false
 
     internal fun startAuthWorkflow() {
-        val isOAuthEnabled = config["oauth_enabled"] as? Boolean ?: false
         // only proceed if oauth is true and auth token is expired already
-        if (!(isOAuthEnabled and isAuthTokenExpired())) return
+        if (!(isOAuthEnabled && isAuthTokenExpired())) return
 
         CoroutineScope(Dispatchers.IO).launch {
             var attempt = 0
@@ -67,7 +67,6 @@ internal class AuthHandler private constructor(private val context: Context, pri
     private suspend fun AuthWorkflow(): AuthResult = withContext(Dispatchers.IO) {
         val clientId = config["client_id"] as? String ?: return@withContext AuthResult.Failure(AuthError.CONFIGURATION_FAILED)
         val sub = config["sub"] as? String ?: return@withContext AuthResult.Failure(AuthError.CONFIGURATION_FAILED)
-        val isOAuthEnabled = config["oauth_enabled"] as? Boolean ?: false
         nativeConfigureAuthClient(clientId, sub, isOAuthEnabled)
 
         // Receive the nonce from the secure server.
@@ -135,6 +134,10 @@ internal class AuthHandler private constructor(private val context: Context, pri
 
     internal fun isAuthTokenExpired(): Boolean {
         return nativeIsAuthTokenExpired()
+    }
+
+    internal fun isOAuthEnabled(): Boolean {
+        return isOAuthEnabled
     }
 
     private external fun nativeFetchAuthChallenge(): String
