@@ -27,6 +27,7 @@ let package = Package(
                         .product(name: "SwiftProtobuf", package: "swift-protobuf")
                         ],
                     path: "swift/sdk/Sources/SmartSpectraSwiftSDK",
+                    exclude: ["../../Package.swift", "../../Package.resolved"],
                     resources: [
                         .process("Resources/PrivacyInfo.xcprivacy")
                     ]
