@@ -44,9 +44,7 @@ internal class AuthHandler {
         Task {
             await authRunner.enqueue { [weak self] in
                 guard let self = self else { completion?(nil); return }
-                guard let plist = self.plistData else {
-                    completion?(AuthError.configurationFailed); return
-                }
+
                 guard self.isAuthTokenExpired(), self.isOauthEnabled else {
                     completion?(nil); return
                 }
@@ -81,7 +79,7 @@ internal class AuthHandler {
 
     private func AuthWorkflow() async -> AuthResult {
 
-        // Check for pre-conditions
+        // Check for pre-conditions, if plist data is not available, this method should not be called
         guard let plistData = plistData else { return .failure(AuthError.configurationFailed) }
         guard configureAuthClient(with: plistData) else { return .failure(AuthError.configurationFailed) }
         guard service.isSupported else { return .failure(AuthError.notSupported) }
@@ -179,11 +177,11 @@ internal class AuthHandler {
 
     private func readPlist() -> [String: Any]? {
         guard let path = Bundle.main.path(forResource: "PresageService-Info", ofType: "plist") else {
-            print("Error: PresageService-Info.plist not found.")
+            print("PresageService-Info.plist not found. OAuth authentication will be disabled. Using API key authentication instead.")
             return nil
         }
         guard let plistData = NSDictionary(contentsOfFile: path) as? [String: Any] else {
-            print("Error: Failed to load PresageService-Info.plist.")
+            print("Error: Failed to load PresageService-Info.plist. OAuth authentication will be disabled.")
             return nil
         }
         return plistData
