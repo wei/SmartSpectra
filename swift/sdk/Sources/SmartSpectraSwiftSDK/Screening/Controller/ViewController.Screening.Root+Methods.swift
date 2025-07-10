@@ -215,8 +215,9 @@ extension ViewController.Screening.Root {
 
 extension UIViewController {
     var topBarHeight: CGFloat {
-        var top = self.navigationController?.navigationBar.frame.height ?? 0.0
-        top += UIApplication.shared.windows.first?.windowScene?.statusBarManager?.statusBarFrame.height ?? 0
-        return top
+        let navigationBarHeight = self.navigationController?.navigationBar.frame.height ?? 0.0
+        let statusBarHeight = view.safeAreaInsets.top
+
+        return navigationBarHeight + statusBarHeight
     }
 }

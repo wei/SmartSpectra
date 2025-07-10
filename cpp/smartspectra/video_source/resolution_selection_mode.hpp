@@ -21,6 +21,7 @@
 #pragma once
 // === standard library includes (if any) ===
 // === third-party includes (if any) ===
+#include <absl/strings/string_view.h>
 // === local includes (if any) ===
 namespace presage::smartspectra::video_source {
 

@@ -48,6 +48,8 @@ ABSL_FLAG(pcam::CaptureCodec, codec, pcam::CaptureCodec::MJPG,
                        pcam::kCaptureCodecNameList));
 ABSL_FLAG(bool, auto_lock, true,
           "If true, will try to use auto-exposure before recording and lock exposure when recording starts. If false, doesn't do this automatically.");
+ABSL_FLAG(vs::InputTransformMode, input_transform_mode, vs::InputTransformMode::Unspecified_EnumEnd,
+          absl::StrCat("Video input transformation mode. Possible values: ", vs::kInputTransformModeNameList));
 ABSL_FLAG(std::string, input_video_path, "",
           "Full path of video to load. Signifies prerecorded video mode will be used. When not provided, "
           "the app will attempt to use a webcam / stream.");
@@ -69,6 +71,9 @@ ABSL_FLAG(int, start_time_offset_ms, 0,
 ABSL_FLAG(bool, scale_input, true,
           "If true, uses input scaling in the ImageTransformationCalculator within the graph.");
 ABSL_FLAG(bool, enable_phasic_bp, false, "If true, enable the phasic blood pressure computation.");
+ABSL_FLAG(bool, use_full_range_face_detection, false, "If true, uses the full range face detection model.");
+ABSL_FLAG(bool, use_full_pose_landmarks, false, "If true, uses the full pose landmarks model.");
+ABSL_FLAG(bool, enable_pose_landmark_segmentation, false, "If true, enables pose landmark segmentation.");
 ABSL_FLAG(bool, print_graph_contents, false, "If true, print the graph contents.");
 ABSL_FLAG(int, verbosity, 1, "Verbosity level -- raise to print more.");
 ABSL_FLAG(std::string, api_key, "",
@@ -109,7 +114,13 @@ absl::Status RunRestSpotApp(
     spectra::container::SpotRestForegroundContainer<TDeviceType> container(settings);
     bool save_to_disk = absl::GetFlag(FLAGS_save_metrics_to_disk);
     std::string output_directory = absl::GetFlag(FLAGS_output_directory);
-    container.OnCoreMetricsOutput = [&settings,&save_to_disk, &output_directory](
+
+    MP_RETURN_IF_ERROR(container.SetOnStatusChange([](presage::physiology::StatusCode status_code) -> absl::Status {
+        std::cout << "Imaging status: " << presage::physiology::GetStatusDescription(status_code) << std::endl;
+        return absl::OkStatus();
+    }));
+
+    MP_RETURN_IF_ERROR(container.SetOnCoreMetricsOutput([&settings,&save_to_disk, &output_directory](
         const presage::physiology::MetricsBuffer& metrics_buffer,
         int64_t timestamp_milliseconds
     ) {
@@ -140,7 +151,7 @@ absl::Status RunRestSpotApp(
             std::cout << metrics_output.str();
         }
         return absl::OkStatus();
-    };
+    }));
     MP_RETURN_IF_ERROR(container.Initialize());
     MP_RETURN_IF_ERROR(container.Run());
 
@@ -170,6 +181,7 @@ int main(int argc, char** argv) {
             absl::GetFlag(FLAGS_resolution_range),
             absl::GetFlag(FLAGS_codec),
             absl::GetFlag(FLAGS_auto_lock),
+            absl::GetFlag(FLAGS_input_transform_mode),
             absl::GetFlag(FLAGS_input_video_path),
             absl::GetFlag(FLAGS_input_video_time_path),
         },
@@ -186,8 +198,12 @@ int main(int argc, char** argv) {
         /*binary_graph=*/true,
         absl::GetFlag(FLAGS_enable_phasic_bp),
         /*enable_dense_facemesh_points=*/false,
+        absl::GetFlag(FLAGS_use_full_range_face_detection),
+        absl::GetFlag(FLAGS_use_full_pose_landmarks),
+        absl::GetFlag(FLAGS_enable_pose_landmark_segmentation),
         /*enable_edge_metrics*/false, // doesn't currently apply to spot mode
         absl::GetFlag(FLAGS_print_graph_contents),
+        /*log_transfer_timing_info=*/false, // doesn't currently apply to spot mode
         absl::GetFlag(FLAGS_verbosity),
         settings::SpotSettings{
             absl::GetFlag(FLAGS_spot_duration)

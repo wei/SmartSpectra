@@ -5,7 +5,7 @@ import Combine
 
 import PresagePreprocessing
 import AVFoundation
-import SwiftUICore
+import SwiftUI
 
 public typealias MetricsBuffer = Presage_Physiology_MetricsBuffer
 public typealias Metrics = Presage_Physiology_Metrics

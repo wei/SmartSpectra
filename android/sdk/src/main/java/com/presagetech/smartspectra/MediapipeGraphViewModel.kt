@@ -46,6 +46,9 @@ internal class MediapipeGraphViewModel private constructor(context: Context) : V
     private val ENABLE_EDGE_METRICS_PACKET_NAME = "enable_edge_metrics"
     private val ENABLE_DENSE_FACEMESH_POINTS_PACKET_NAME = "enable_dense_facemesh_points"
     private val MODEL_DIRECTORY_SIDE_PACKET_NAME = "model_directory"
+    private val USE_FULL_RANGE_FACE_DETECTION_SIDE_PACKET_NAME = "use_full_range_face_detection"
+    private val USE_FULL_POSE_LANDMARKS_SIDE_PACKET_NAME = "use_full_pose_landmarks"
+    private val ENABLE_POSE_LANDMARK_SEGMENTATION_SIDE_PACKET_NAME = "enable_pose_landmark_segmentation"
     private val API_KEY_SIDE_PACKET_NAME = "api_key"
     private val PREPROCESSED_DATA_BUFFER_DURATION_PACKET_NAME = "preprocessed_data_buffer_duration"
     private val SAVE_ROI_IMAGE = "save_roi_image"
@@ -110,6 +113,9 @@ internal class MediapipeGraphViewModel private constructor(context: Context) : V
                 ENABLE_DENSE_FACEMESH_POINTS_PACKET_NAME to it.packetCreator.createBool(true),
                 ENABLE_EDGE_METRICS_PACKET_NAME to it.packetCreator.createBool(SmartSpectraSdkConfig.enableEdgeMetrics),
                 MODEL_DIRECTORY_SIDE_PACKET_NAME to it.packetCreator.createString(SmartSpectraSdkConfig.MODEL_DIRECTORY),
+                USE_FULL_RANGE_FACE_DETECTION_SIDE_PACKET_NAME to it.packetCreator.createBool(SmartSpectraSdkConfig.useFullRangeFaceDetection),
+                USE_FULL_POSE_LANDMARKS_SIDE_PACKET_NAME to it.packetCreator.createBool(SmartSpectraSdkConfig.useFullLandmarks),
+                ENABLE_POSE_LANDMARK_SEGMENTATION_SIDE_PACKET_NAME to it.packetCreator.createBool(SmartSpectraSdkConfig.enableLandmarkSegmentation),
                 // TODO: currently always need to set because of some graph changes. only set it for api key based auth once the graph is fixed
                 API_KEY_SIDE_PACKET_NAME to it.packetCreator.createString(viewModel.getApiKey()),
                 PREPROCESSED_DATA_BUFFER_DURATION_PACKET_NAME to it.packetCreator.createFloat64(SmartSpectraSdkConfig.preprocessedDataBufferDuration),

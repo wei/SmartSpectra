@@ -1,4 +1,4 @@
-# SmartSpectra SDK for Android
+# Module SmartSpectra Android SDK
 
 ## Integration Guide Overview
 
@@ -36,7 +36,7 @@ You'll need either an API key or Oauth config to use the SmartSpectra Android SD
 
 - **API Key Option**: Add your API key to the [MainActivity.kt](samples/demo-app/src/main/java/com/presagetech/smartspectra_example/MainActivity.kt) file by replacing the placeholder `"YOUR_API_KEY"`.
 - **Oauth Config Option**: Currently only supported for playstore releases. With the downloaded Oauth xml config from obtained during [Authentication](../docs/authentication.md) and place into your app's `src/main/res/xml` directory.
-![xml file location in repo](../docs/images/xml_location_in_repo.png)
+![xml file location in repo](media/xml_location_in_repo.png)
 
 > **NOTE**
 > Oauth config is currently only supported for playstore releases.
@@ -63,7 +63,7 @@ To integrate the SmartSpectra SDK into your Android project, add the following d
 
 ```gradle
 dependencies {
-    implementation("com.presagetech:smartspectra:1.0.20")
+    implementation("com.presagetech:smartspectra:1.0.21")
 }
 ```
 

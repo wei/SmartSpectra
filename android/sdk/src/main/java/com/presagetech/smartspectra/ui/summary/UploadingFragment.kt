@@ -9,7 +9,7 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 import com.presagetech.smartspectra.R
 
-class UploadingFragment : Fragment() {
+internal class UploadingFragment : Fragment() {
 
     private lateinit var statusText: TextView
     private lateinit var progressBar: ProgressBar

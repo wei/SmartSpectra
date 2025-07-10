@@ -7,7 +7,7 @@ import timber.log.Timber
 
 // Initializes SmartSpectraSdk at app startup
 @Suppress("unused")
-class SmartSpectraInitializer : Initializer<SmartSpectraSdk> {
+internal class SmartSpectraInitializer : Initializer<SmartSpectraSdk> {
     override fun create(context: Context): SmartSpectraSdk {
         // Initialize Timber for logging
         if (Timber.forest().isEmpty()) {

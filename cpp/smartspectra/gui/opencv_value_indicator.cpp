@@ -38,10 +38,12 @@ const float OpenCvValueIndicator::max_value = 999.9;
  * @param y - bottom coordinate of the text box
  * @param width - width of the text box
  * @param height - height of the text box
+ * @param precision_digits - number of digits after the decimal point
  */
-OpenCvValueIndicator::OpenCvValueIndicator(int x, int y, int width, int height)
-    : indicator_area(x, y, width, height) {
-    const std::string template_text = "000.0";
+OpenCvValueIndicator::OpenCvValueIndicator(int x, int y, int width, int height, int precision_digits)
+    : indicator_area(x, y, width, height), precision_digits(precision_digits) {
+    // Construct template_text with the correct number of zeros after the decimal
+    std::string template_text = "000." + std::string(this->precision_digits, '0');
     int baseline = 0;
     auto text_bound_nominal = cv::getTextSize(template_text, font_face, 1, 1, &baseline);
     auto width_scale = static_cast<double>(text_bound_nominal.width) / width;
@@ -60,7 +62,7 @@ absl::Status OpenCvValueIndicator::Render(cv::Mat& image, float value, cv::Scala
     }
     MP_RETURN_IF_ERROR(CheckThatElementFitsImage("OpenCvValueIndicator", this->indicator_area, image));
     std::stringstream text;
-    text << std::setprecision(1) << std::fixed << value;
+    text << std::setprecision(this->precision_digits) << std::fixed << value;
     cv::putText(image, text.str(), text_origin, font_face, font_scale, std::move(color), 1, cv::LINE_AA);
     return absl::OkStatus();
 }

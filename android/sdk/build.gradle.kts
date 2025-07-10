@@ -1,6 +1,7 @@
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.dokka")
     id("maven-publish")
     id("signing")
     id("kotlin-parcelize")
@@ -95,9 +96,8 @@ dependencies {
     //integrity api dependencies
     implementation("com.google.android.play:integrity:1.4.0")
 
-    //TODO: 9/27/24: Verify if we are exposing anything sensitive or unnecessary by using "api" instead of implementation
-    // mediapipe java library
-    api(files("libs/classes.jar"))
+    // mediapipe java library - contains JNI bindings for native libraries
+    implementation(files("libs/classes.jar"))
 
     // charting
     implementation ("com.github.PhilJay:MPAndroidChart:v3.1.0")
@@ -113,6 +113,49 @@ dependencies {
     androidTestImplementation("org.mockito:mockito-core:5.4.0")
 }
 
+tasks.withType<org.jetbrains.dokka.gradle.DokkaTask>().configureEach {
+    dokkaSourceSets {
+        named("main") {
+            displayName.set("SmartSpectra Android SDK")
+            moduleName.set("SmartSpectra Android SDK")
+
+            // Include outer README overview
+            includes.from("../README.md")
+
+            // Include main SDK packages
+            perPackageOption {
+                matchingRegex.set("com\\.presagetech\\.smartspectra")
+                includeNonPublic.set(false)
+            }
+
+            // Include protobuf package for documentation
+            perPackageOption {
+                matchingRegex.set("com\\.presage\\.physiology\\.proto")
+                includeNonPublic.set(false)
+            }
+
+            suppressInheritedMembers.set(true)
+            suppressObviousFunctions.set(true)
+            suppressGeneratedFiles.set(true)
+        }
+    }
+
+    // Copy images to the documentation output directory
+    doLast {
+        val dokkaOutputDir = file("build/dokka/html")
+        val mediaOutputDir = file("$dokkaOutputDir/media")
+
+        // Copy media images
+        val androidMediaDir = file("../media")
+        if (androidMediaDir.exists()) {
+            copy {
+                from(androidMediaDir)
+                into(mediaOutputDir)
+            }
+        }
+    }
+}
+
 task<Javadoc>("androidJavadoc") {
     exclude("**/R.html", "**/R.*.html", "**/index.html")
     options.encoding = "UTF-8"
@@ -123,16 +166,8 @@ signing {
     sign(publishing.publications)
 }
 
+
 publishing {
-    repositories {
-        maven {
-            credentials {
-                username = project.findProperty("MAVEN_USER") as String? ?: System.getenv("MAVEN_USER")
-                password = project.findProperty("MAVEN_PASSWORD") as String? ?: System.getenv("MAVEN_PASSWORD")
-            }
-            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
-        }
-    }
     publications {
         create<MavenPublication>("release") {
             afterEvaluate {

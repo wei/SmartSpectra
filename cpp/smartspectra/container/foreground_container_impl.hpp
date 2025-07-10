@@ -69,7 +69,6 @@ const std::string ForegroundContainer<TDeviceType, TOperationMode, TIntegrationM
     TDeviceType,
     TOperationMode,
     TIntegrationMode>::GenerateGuiWindowName();
-
 /**
  * Called from Run() at each frame iteration.
  * @tparam TDeviceType
@@ -101,6 +100,8 @@ absl::Status ForegroundContainer<TDeviceType,
                        this->video_source->SupportsExposureControls()) {
                 MP_RETURN_IF_ERROR(this->video_source->TurnOnAutoExposure());
             }
+        } else {
+            MP_RETURN_IF_ERROR(this->ComputeCorePerformanceTelemetry(metrics_buffer));
         }
     }
     // A separate outer if-clause used here to increase the likelihood of compiler optimizing this out
@@ -121,6 +122,7 @@ absl::Status ForegroundContainer<TDeviceType,
             } while (got_edge_metrics_output);
         }
     }
+
     return absl::OkStatus();
 }
 
@@ -208,7 +210,11 @@ absl::Status ForegroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
     if (!this->initialized) {
         return absl::PermissionDeniedError("Client not initialized.");
     }
+    this->running = true;
     LOG(INFO) << "Set up output pollers.";
+
+    //TODO: check that callbacks aren't nullptr (potentially, move the checks out into container base class and call
+    // from both here and background container's StartGraph, instead of duplicating the code that's already there.)
 
     MP_ASSIGN_OR_RETURN(mediapipe::OutputStreamPoller output_video_poller,
                         this->graph.AddOutputStreamPoller(pe::graph::output_streams::kOutputVideo));
@@ -216,6 +222,11 @@ absl::Status ForegroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
                         this->graph.AddOutputStreamPoller(pe::graph::output_streams::kStatusCode));
     MP_ASSIGN_OR_RETURN(mediapipe::OutputStreamPoller blue_tooth_poller,
                         this->graph.AddOutputStreamPoller(pe::graph::output_streams::kBlueTooth));
+
+    // frame rate diagnostics
+    MP_ASSIGN_OR_RETURN(mediapipe::OutputStreamPoller frame_sent_through_poller,
+                        this->graph.AddOutputStreamPoller(pe::graph::output_streams::kFrameSentThrough));
+
 
     MP_RETURN_IF_ERROR(this->InitializeOutputDataPollers());
 
@@ -228,10 +239,6 @@ absl::Status ForegroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
     this->keep_grabbing_frames = true;
 
     double blue_tooth;
-
-    bool preprocessed_data_uploaded = false;
-    mediapipe::Timestamp preprocessed_data_upload_time;
-    int i_current_reporting_interval = 0;
 
 #ifdef BENCHMARK_CAMERA_CAPTURE
     int64_t i_frame = 0;
@@ -272,6 +279,7 @@ absl::Status ForegroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
             // compute timestamp
             int64_t frame_timestamp = this->video_source->GetFrameTimestamp();
             auto mp_frame_timestamp = mediapipe::Timestamp(frame_timestamp);
+            this->AddFrameTimestampToBenchmarkingInfo(mp_frame_timestamp);
 
             // === handle output
             cv::Mat camera_frame;
@@ -311,15 +319,14 @@ absl::Status ForegroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
                                                                        output_video_packet));
 
                 // Convert to BGR and display.
-                cv::Mat output_frame_bgr;
-                cv::cvtColor(output_frame_rgb, output_frame_bgr, cv::COLOR_RGB2BGR);
+                cv::cvtColor(output_frame_rgb, this->output_frame_bgr, cv::COLOR_RGB2BGR);
 
                 // Envoke Callback on the video
-                MP_RETURN_IF_ERROR(this->OnVideoOutput(output_frame_bgr, frame_timestamp));
+                MP_RETURN_IF_ERROR(this->OnVideoOutput(this->output_frame_bgr, frame_timestamp));
 
                 // only display output window when we're not in headless mode.
                 if (!this->settings.headless) {
-                    cv::imshow(kWindowName, output_frame_bgr);
+                    cv::imshow(kWindowName, this->output_frame_bgr);
                 }
 #ifdef WITH_VIDEO_OUTPUT
                 if (this->stream_writer.isOpened() && !this->settings.video_sink.passthrough) {
@@ -334,11 +341,13 @@ absl::Status ForegroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
                 status_value, got_status_code_packet, status_code_poller, pe::graph::output_streams::kStatusCode,
                 this->settings.verbosity_level > 2
             ));
-            this->status_code = status_value.value();
 
-            if (this->status_code != previous_status_code) {
-                MP_RETURN_IF_ERROR(this->OnStatusChange(this->status_code));
-                previous_status_code = this->status_code;
+            if (got_status_code_packet){
+                this->status_code = status_value.value();
+                if (this->status_code != previous_status_code) {
+                    MP_RETURN_IF_ERROR(this->OnStatusChange(this->status_code));
+                    previous_status_code = this->status_code;
+                }
             }
 
             bool got_blue_tooth_packet;
@@ -350,6 +359,18 @@ absl::Status ForegroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
             bool operation_state_changed;
             MP_RETURN_IF_ERROR(this->operation_context
                                    .QueryPollers(operation_state_changed, this->settings.verbosity_level > 1));
+
+            bool got_frame_sent_through_packet;
+            bool frame_sent_through;
+            mediapipe::Timestamp frame_sent_through_timestamp;
+            MP_RETURN_IF_ERROR(ph::GetPacketContentsIfAny(
+                frame_sent_through, got_frame_sent_through_packet, frame_sent_through_poller,
+                pe::graph::output_streams::kFrameSentThrough, frame_sent_through_timestamp,
+                this->settings.verbosity_level > 4
+            ));
+            if(got_frame_sent_through_packet){
+                MP_RETURN_IF_ERROR(this->OnFrameSentThrough(frame_sent_through, frame_sent_through_timestamp.Value()));
+            }
 
             MP_RETURN_IF_ERROR(this->HandleOutputData(frame_timestamp));
 
@@ -366,7 +387,6 @@ absl::Status ForegroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
                         LOG(INFO) << "Recording started.";
                     }
                 }
-                std::this_thread::sleep_for(std::chrono::milliseconds(this->settings.interframe_delay_ms));
             } else {
                 MP_RETURN_IF_ERROR(keys::HandleKeyboardInput(
                     this->keep_grabbing_frames, this->recording, *(this->video_source), this->settings,
@@ -387,14 +407,14 @@ absl::Status ForegroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
 
     LOG(INFO) << "Shutting down.";
     MP_RETURN_IF_ERROR(this->graph.CloseAllInputStreams());
-
+    MP_RETURN_IF_ERROR(this->graph.CloseAllPacketSources());
 #ifdef WITH_VIDEO_OUTPUT
     if (this->stream_writer.isOpened()) {
         this->stream_writer.release();
     }
 #endif
-
-
-    return this->graph.WaitUntilDone();
+    MP_RETURN_IF_ERROR(this->graph.WaitUntilDone());
+    this->running = false;
+    return absl::OkStatus();
 }
 } // namespace presage::smartspectra::container

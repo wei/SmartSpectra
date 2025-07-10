@@ -28,7 +28,7 @@ function(SmartSpectra_get_version_from_py_file PREFIX PY_FILE_PATH)
 
     if (DEFINED CMAKE_MATCH_5)
         set(${PREFIX}_VERSION_PRERELEASE ${CMAKE_MATCH_5})
-        set(${PREFIX}_VERSION_PRERELEASE_DEBIAN_POSTFIX "~rc${CMAKE_MATCH_5}")
+        set(${PREFIX}_VERSION_PRERELEASE_DEBIAN_POSTFIX "rc${CMAKE_MATCH_5}")
     else()
         set(${PREFIX}_VERSION_PRERELEASE "")
         set(${PREFIX}_VERSION_PRERELEASE_DEBIAN_POSTFIX "")

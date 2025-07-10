@@ -29,7 +29,7 @@
 // === local includes (if any) ===
 #include "container.hpp"
 #include "output_stream_poller_wrapper.hpp"
-#include <smartspectra/video_source/interface.hpp>
+#include <smartspectra/video_source/video_source.hpp>
 
 namespace presage::smartspectra::container {
 
@@ -47,11 +47,6 @@ public:
     absl::Status Initialize() override;
     virtual absl::Status Run();
 
-    //TODO: add setters and make protected
-    // if needed, set to a callback that handles video frames after they get preprocessed on the edge / in SDK
-    std::function<absl::Status(cv::Mat& output_frame, int64_t input_timestamp)> OnVideoOutput =
-        [](cv::Mat& output_frame, int64_t input_timestamp){ return absl::OkStatus(); };
-
 protected:
 
     presage::smartspectra::container::output_stream_poller_wrapper::OutputStreamPollerWrapper core_metrics_poller;
@@ -62,7 +57,7 @@ protected:
 
     // state
     bool keep_grabbing_frames;
-    std::unique_ptr<video_source::VideoSourceInterface> video_source = nullptr;
+    std::unique_ptr<video_source::VideoSource> video_source = nullptr;
 #ifdef WITH_VIDEO_OUTPUT
     cv::VideoWriter stream_writer;
 #endif
@@ -73,6 +68,7 @@ private:
     void ScrollPastTimeOffset();
     static std::string GenerateGuiWindowName();
     static const std::string kWindowName;
+
 
 };
 

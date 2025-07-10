@@ -24,11 +24,11 @@
 // === third-party includes (if any) ===
 #include <absl/status/statusor.h>
 // === local includes (if any) ===
-#include "interface.hpp"
+#include "video_source.hpp"
 #include "settings.hpp"
 
 namespace presage::smartspectra::video_source {
 
-absl::StatusOr<std::unique_ptr<VideoSourceInterface>> BuildVideoSource(const VideoSourceSettings& settings);
+absl::StatusOr<std::unique_ptr<VideoSource>> BuildVideoSource(const VideoSourceSettings& settings);
 
 } // namespace presage::smartspectra::video_source

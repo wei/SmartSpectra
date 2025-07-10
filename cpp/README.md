@@ -1,11 +1,16 @@
-# Smart Spectra C++ SDK
+# User Guide
 
-This repository hosts a private SDK for measuring heart and respiration rates for use in C++ applications, along with usage examples.
+SmartSpectra C++ SDK provides customizable, easy-to-integrate components for measuring heart and respiration rates for use in C++ applications.
 
+<!--
+\ifnot DOXYGEN
+-->
+<!--- BEGIN TOC --->
 ## Table of Contents
 
  - [Quick Start](#quick-start)
  - [Supported Systems & Architectures](#supported-systems--architectures)
+ - [Authentication & OnPrem Solution](#authentication--onprem-solution)
  - [Installing Prebuilt SDK Packages from PPA (Ubuntu / Linux Mint)](#installing-prebuilt-sdk-packages-from-debian-repository-ubuntu--linux-mint)
    - [Setting up the Presage PPA](#setting-up-the-presage-ppa)
    - [Installing/Upgrading the Smart Spectra C++ SDK](#installingupgrading-the-smart-spectra-c-sdk-debian-package)
@@ -18,11 +23,14 @@ This repository hosts a private SDK for measuring heart and respiration rates fo
    - [Using a Custom OnEdgeMetricsOutput Callback](#using-a-custom-onedgemetricsoutput-callback)
    - [Using a Custom OnVideoOutput Callback](#using-a-custom-onvideooutput-callback)
   - [Bugs & Troubleshooting](#bugs--troubleshooting)
+<!--- END TOC --->
+<!--
+\endif
+-->
 
 ## Quick Start
 
-
-Obtain API key from <https://physiology.presagetech.com>.
+Obtain an API key from <https://physiology.presagetech.com>.
 Then, on Ubuntu 22.04 or Mint 21, follow the steps below.
 
 ### Install:
@@ -38,7 +46,9 @@ Then, on Ubuntu 22.04 or Mint 21, follow the steps below.
 
 ## Supported Systems & Architectures
 
-We currently publicly provide SDK dependency packages only for **Ubuntu 22.04 and Mint 21 Linux** distributions running on the **amd64/x86_64** architecture, but we already support many other systems and architectures for our partners, and plan to release these publicly in the near future. 
+We currently publicly provide SDK dependency packages only for **Ubuntu 22.04 and Mint 21 Linux** distributions running 
+on the **amd64/x86_64** architecture, but we already support many other systems and architectures for our partners  
+and plan to release these publicly in the near future. 
 
 | OS                    | Package Type  | Architecture | Support Level / Status                                                                   |
 |-----------------------|---------------|--------------|------------------------------------------------------------------------------------------|
@@ -55,9 +65,16 @@ We currently publicly provide SDK dependency packages only for **Ubuntu 22.04 an
 
 If you're interested in partnering with us or seeing higher support levels for specific packages, please reach out to <[support@presagetech.com](mailto:support@presagetech.com)>.
 
-### Authentication
+### Authentication & OnPrem Solution
 
-You'll need a Presage Physiology API key to use the SmartSpectra SDK. You can register for an account and obtain an API key at <https://physiology.presagetech.com>.
+You'll need a Presage Physiology API key to use the SmartSpectra SDK. You can register for an account and obtain an API 
+key at <https://physiology.presagetech.com>. The Physiology REST API is queried via the internet by the SmartSpectra 
+SDKs to retrieve refined vitals data and metrics based on preprocessed data from video.
+
+Thus, generally, an internet connection is required while using the standard public version of the SDK. However, we do 
+provide our **SmartSpectra OnPrem C++ SDK** solution to our partners, which runs entirely on the edge and uses a gRPC 
+connection protocol to hook up with a frontend written in any of the [gRPC-supported languages](https://grpc.io/docs/languages/).
+If you're interested in using the OnPrem solution, please [contact us](https://presagetechnologies.com/contact-us).  
 
 ## Installing Prebuilt SDK Packages from Debian Repository (Ubuntu / Linux Mint)
 
@@ -138,11 +155,13 @@ target_link_libraries(my_app
 Typically, you will want to do something with the vitals data output from SmartSpectra & Physiology Core API.
 The following code demonstrates how you can add your own callback to process and/or display the data:
 ```C++
-container.OnCoreMetricsOutput = [](const presage::physiology::MetricsBuffer& metrics, int64_t timestamp_microseconds) {
+MP_RETURN_IF_ERROR(container.SetOnCoreMetricsOutput([](const presage::physiology::MetricsBuffer& metrics, int64_t timestamp_microseconds) {
     LOG(INFO) << "Got metrics from Physiology REST API: " << metrics;
     return absl::OkStatus();
-};
+}));
 ```
+**Note**: for this and subsequent callback examples, the `MP_RETURN_IF_ERROR(...);` macro is just a convenience wrapper around the `absl::Status` return type, which will forward it if the status is not `absl::OkStatus()` _by returning it_. If your calling function does not have the `absl::Status` return type, you can safely replace it by using `auto status = container.SetOnCoreMetricsOutput(...);` , and then check & handle the status as you see fit.
+
 You can see how the callback is used to format metrics as a JSON string in the [minimal_rest_spot_example app](samples/minimal_rest_spot_example/main.cc), how it is output to a file in the [rest_spot_example app](samples/rest_spot_example/main.cc), and how it is used to plot vitals data in real time in [rest_continuous_example app](samples/rest_continuous_example/main.cc).
 
 ### Using a Custom OnEdgeMetricsOutput Callback
@@ -150,26 +169,26 @@ You can see how the callback is used to format metrics as a JSON string in the [
 Some metrics (namely the upper and lower breathing trace) are now available for computation on edge on a framerate basis. To enable this behavior, you need to set `enable_edge_metrics` to true in the `Settings` object you use to initialize the container (see [rest_continuous_example app](samples/rest_continuous_example/main.cc) for an example).
 The following code demonstrates how you can add your own callback to process and/or display this data:
 ```C++
-container.OnEdgeMetricsOutput = [](const presage::physiology::Metrics& metrics) {
+MP_RETURN_IF_ERROR(container.SetOnEdgeMetricsOutput([](const presage::physiology::Metrics& metrics) {
     LOG(INFO) << "Computed metrics on edge: " << metrics;
     return absl::OkStatus();
-}
+}));
 ```
+For details on the `MP_RETURN_IF_ERROR(...);` macro, please consult the note in the section on [OnCoreMetricsOutput](#using-a-custom-oncoremetricsoutput-callback) above.
 
 ### Using a Custom OnVideoOutput Callback
 
 If you need to draw something on top of the video stream or forward it to some form of GUI, you can do this by setting the `OnVideoOutput` callback.
 
 ```C++
-container.OnVideoOutput = (cv::Mat& output_frame, int64_t timestamp_milliseconds) {
+MP_RETURN_IF_ERROR(container.SetOnVideoOutput([](cv::Mat& output_frame, int64_t timestamp_milliseconds) {
     cv.imshow("Video Output", output_frame);
     return absl::OkStatus();
-};
+}));
 ```
 You can find how this callback is used to plot corresponding vitals data in real time directly over the video output in [rest_continuous_example app](samples/rest_continuous_example/main.cc).
 
-
-More examples, tutorials, and reference documentation are coming soon!
+For details on the `MP_RETURN_IF_ERROR(...);` macro, please consult the note in the section on [OnCoreMetricsOutput](#using-a-custom-oncoremetricsoutput-callback) above.
 
 ## Building the SDK
 

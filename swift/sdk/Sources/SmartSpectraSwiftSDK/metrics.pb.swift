@@ -213,6 +213,12 @@ public struct Presage_Physiology_Metadata {
 
   public var apiVersion: String = String()
 
+  public var sentAtS: Double = 0
+
+  public var frameTimestamp: Int64 = 0
+
+  public var frameCount: Int32 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -782,6 +788,9 @@ extension Presage_Physiology_Metadata: SwiftProtobuf.Message, SwiftProtobuf._Mes
     1: .same(proto: "id"),
     2: .standard(proto: "upload_timestamp"),
     3: .standard(proto: "api_version"),
+    4: .standard(proto: "sent_at_s"),
+    5: .standard(proto: "frame_timestamp"),
+    6: .standard(proto: "frame_count"),
   ]
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
@@ -793,6 +802,9 @@ extension Presage_Physiology_Metadata: SwiftProtobuf.Message, SwiftProtobuf._Mes
       case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.uploadTimestamp) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.apiVersion) }()
+      case 4: try { try decoder.decodeSingularDoubleField(value: &self.sentAtS) }()
+      case 5: try { try decoder.decodeSingularInt64Field(value: &self.frameTimestamp) }()
+      case 6: try { try decoder.decodeSingularInt32Field(value: &self.frameCount) }()
       default: break
       }
     }
@@ -808,6 +820,15 @@ extension Presage_Physiology_Metadata: SwiftProtobuf.Message, SwiftProtobuf._Mes
     if !self.apiVersion.isEmpty {
       try visitor.visitSingularStringField(value: self.apiVersion, fieldNumber: 3)
     }
+    if self.sentAtS != 0 {
+      try visitor.visitSingularDoubleField(value: self.sentAtS, fieldNumber: 4)
+    }
+    if self.frameTimestamp != 0 {
+      try visitor.visitSingularInt64Field(value: self.frameTimestamp, fieldNumber: 5)
+    }
+    if self.frameCount != 0 {
+      try visitor.visitSingularInt32Field(value: self.frameCount, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -815,6 +836,9 @@ extension Presage_Physiology_Metadata: SwiftProtobuf.Message, SwiftProtobuf._Mes
     if lhs.id != rhs.id {return false}
     if lhs.uploadTimestamp != rhs.uploadTimestamp {return false}
     if lhs.apiVersion != rhs.apiVersion {return false}
+    if lhs.sentAtS != rhs.sentAtS {return false}
+    if lhs.frameTimestamp != rhs.frameTimestamp {return false}
+    if lhs.frameCount != rhs.frameCount {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

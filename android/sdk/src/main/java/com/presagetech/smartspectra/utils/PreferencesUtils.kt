@@ -3,7 +3,7 @@ package com.presagetech.smartspectra.utils
 import android.content.Context
 import com.presagetech.smartspectra.R
 
-object PreferencesUtils {
+internal object PreferencesUtils {
     const val AGREED_TO_TERMS_OF_SERVICE_KEY = "agreed_to_terms_of_service"
     const val AGREED_TO_PRIVACY_POLICY_KEY = "agreed_to_privacy_policy"
     const val ONBOARDING_TUTORIAL_KEY = "onboarding_tutorial_has_been_shown"

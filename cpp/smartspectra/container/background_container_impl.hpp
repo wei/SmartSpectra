@@ -23,6 +23,7 @@
 // === third-party includes (if any) ===
 #include <mediapipe/framework/formats/image_frame.h>
 #include <mediapipe/framework/formats/image_frame_opencv.h>
+#include <mediapipe/framework/port/opencv_imgproc_inc.h>
 #include <physiology/graph/stream_and_packet_names.h>
 // === local includes (if any) ===
 #include "background_container.hpp"
@@ -36,12 +37,11 @@ template<platform_independence::DeviceType TDeviceType, settings::OperationMode 
 BackgroundContainer<TDeviceType,
     TOperationMode,
     TIntegrationMode>::BackgroundContainer(BackgroundContainer::SettingsType settings):
-    Base(settings),
-    graph_started(false) {}
+    Base(settings) {}
 
 template<platform_independence::DeviceType TDeviceType, settings::OperationMode TOperationMode, settings::IntegrationMode TIntegrationMode>
 bool BackgroundContainer<TDeviceType, TOperationMode, TIntegrationMode>::GraphIsRunning() const {
-    return this->graph_started;
+    return this->running;
 }
 
 template<platform_independence::DeviceType TDeviceType, settings::OperationMode TOperationMode, settings::IntegrationMode TIntegrationMode>
@@ -56,20 +56,27 @@ absl::Status BackgroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
     return absl::OkStatus();
 }
 
+template<typename TCallback>
+static absl::Status CheckCallbackNotNull(const std::string& callback_name, const TCallback& callback) {
+    if (callback == nullptr) {
+        return absl::InvalidArgumentError(
+            callback_name + " callback is nullptr. Expecting a valid callback. "
+                            "Please ensure your callback doesn't go out of scope and get destroyed while the graph is running."
+        );
+    }
+    return absl::OkStatus();
+}
+
 template<platform_independence::DeviceType TDeviceType, settings::OperationMode TOperationMode, settings::IntegrationMode TIntegrationMode>
 absl::Status BackgroundContainer<TDeviceType, TOperationMode, TIntegrationMode>::StartGraph() {
     if (!this->initialized) {
         return absl::FailedPreconditionError("Container not initialized.");
     }
+    this->running = true;
     this->operation_context.Reset();
 
-    if (this->OnStatusChange == nullptr){
-        return absl::FailedPreconditionError(
-            "OnStatusChange callback is nullptr. Expecting a valid callback. "
-            "Please ensure your callback doesn't go out of scope and get destroyed while the graph is running."
-        );
-    }
-
+    // Prepare to handle imaging status code changes.
+    MP_RETURN_IF_ERROR(CheckCallbackNotNull("OnStatusChange", this->OnStatusChange));
     MP_RETURN_IF_ERROR(this->graph.ObserveOutputStream(
         pe::graph::output_streams::kStatusCode,
         [this](const mediapipe::Packet& status_packet) {
@@ -84,36 +91,27 @@ absl::Status BackgroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
         }
     ));
 
-    if (this->OnCoreMetricsOutput == nullptr) {
-        return absl::FailedPreconditionError(
-            "OnCoreMetricsOutput callback is nullptr. Expecting a valid callback."
-            "Please ensure your callback doesn't go out of scope and get destroyed while the graph is running."
-        );
-    }
-
+    // Prepare to handle core metrics output.
+    MP_RETURN_IF_ERROR(CheckCallbackNotNull("OnCoreMetricsOutput", this->OnCoreMetricsOutput));
     MP_RETURN_IF_ERROR(this->graph.ObserveOutputStream(
         physiology::edge::graph::output_streams::kMetricsBuffer,
-        [this](const mediapipe::Packet& output_packet) {
+        [this](const mediapipe::Packet& output_packet) -> absl::Status {
             if (!output_packet.IsEmpty()) {
                 auto metrics_buffer = output_packet.Get<physiology::MetricsBuffer>();
                 auto timestamp = output_packet.Timestamp();
+                MP_RETURN_IF_ERROR(this->ComputeCorePerformanceTelemetry(metrics_buffer));
                 return this->OnCoreMetricsOutput(metrics_buffer, timestamp.Value());
             }
             return absl::OkStatus();
         }
     ));
 
+    // Prepare to handle edge metrics output
     // A separate outer if-clause used here to increase the likelihood of compiler optimizing this out
     // when we're in spot mode.
-    if (TOperationMode == settings::OperationMode::Continuous){
+    if (TOperationMode == settings::OperationMode::Continuous) {
         if (this->settings.enable_edge_metrics) {
-            if (this->OnEdgeMetricsOutput == nullptr) {
-                return absl::FailedPreconditionError(
-                    "OnEdgeMetricsOutput callback is nullptr. Expecting a valid callback."
-                    "Please ensure your callback doesn't go out of scope and get destroyed while the graph is running."
-                );
-            }
-
+            MP_RETURN_IF_ERROR(CheckCallbackNotNull("OnEdgeMetricsOutput", this->OnEdgeMetricsOutput));
             MP_RETURN_IF_ERROR(this->graph.ObserveOutputStream(
                 physiology::edge::graph::output_streams::kEdgeMetrics,
                 [this](const mediapipe::Packet& output_packet) {
@@ -127,9 +125,40 @@ absl::Status BackgroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
         }
     }
 
+    MP_RETURN_IF_ERROR(CheckCallbackNotNull("OnVideoOutput", this->OnVideoOutput));
+    MP_RETURN_IF_ERROR(this->graph.ObserveOutputStream(
+        physiology::edge::graph::output_streams::kOutputVideo,
+        [this](const mediapipe::Packet& output_video_packet) -> absl::Status {
+            if (!output_video_packet.IsEmpty()) {
+                cv::Mat output_frame_rgb;
+                MP_RETURN_IF_ERROR(it::GetFrameFromPacket<TDeviceType>(output_frame_rgb,
+                                                                       this->device_context,
+                                                                       output_video_packet));
+                // Convert to BGR and display.
+                cv::cvtColor(output_frame_rgb, this->output_frame_bgr, cv::COLOR_RGB2BGR);
+                auto timestamp = output_video_packet.Timestamp();
+                return this->OnVideoOutput(this->output_frame_bgr, timestamp.Value());
+            }
+            return absl::OkStatus();
+        }
+    ));
+
+    MP_RETURN_IF_ERROR(CheckCallbackNotNull("OnFrameSentThrough", this->OnFrameSentThrough));
+    MP_RETURN_IF_ERROR(this->graph.ObserveOutputStream(
+        pe::graph::output_streams::kFrameSentThrough,
+        [this](const mediapipe::Packet& output_packet) {
+           if (!output_packet.IsEmpty()) {
+               bool frame_sent_through = output_packet.Get<bool>();
+               auto timestamp = output_packet.Timestamp();
+               return this->OnFrameSentThrough(frame_sent_through, timestamp.Value());
+           }
+           return absl::OkStatus();
+        }
+    ));
+
     MP_RETURN_IF_ERROR(this->graph.StartRun({}));
     MP_RETURN_IF_ERROR(this->graph.WaitUntilIdle());
-    this->graph_started = true;
+    this->running = true;
     return absl::OkStatus();
 }
 
@@ -138,7 +167,7 @@ absl::Status BackgroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
     if (!this->initialized) {
         return absl::FailedPreconditionError("Container not initialized.");
     }
-    if (!this->graph_started) {
+    if (!this->running) {
         return absl::FailedPreconditionError("Graph not started.");
     }
     MP_RETURN_IF_ERROR(this->graph.WaitUntilIdle());
@@ -150,7 +179,7 @@ absl::Status BackgroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
     if (!this->initialized) {
         return absl::FailedPreconditionError("Container not initialized.");
     }
-    if(!this->graph_started) {
+    if (!this->running) {
         return absl::FailedPreconditionError("Graph not started.");
     }
     this->recording = on;
@@ -174,7 +203,7 @@ absl::Status BackgroundContainer<TDeviceType,
     if (!this->initialized) {
         return absl::FailedPreconditionError("Container not initialized.");
     }
-    if(!this->graph_started) {
+    if (!this->running) {
         return absl::FailedPreconditionError("Graph not started.");
     }
     // Wrap Mat into an ImageFrame.
@@ -187,6 +216,7 @@ absl::Status BackgroundContainer<TDeviceType,
     frame_rgb.copyTo(input_frame_mat);
 
     auto frame_timestamp = mediapipe::Timestamp(frame_timestamp_μs);
+    this->AddFrameTimestampToBenchmarkingInfo(frame_timestamp);
     // Send recording state to the graph.
     MP_RETURN_IF_ERROR(
         this->graph
@@ -206,14 +236,14 @@ absl::Status BackgroundContainer<TDeviceType,
 template<platform_independence::DeviceType TDeviceType, settings::OperationMode TOperationMode, settings::IntegrationMode TIntegrationMode>
 absl::Status
 BackgroundContainer<TDeviceType, TOperationMode, TIntegrationMode>::
-    SetOnBluetoothCallback(std::function<absl::Status(double)> on_bluetooth) {
+SetOnBluetoothCallback(std::function<absl::Status(double)> on_bluetooth) {
     if (!this->initialized) {
         return absl::FailedPreconditionError("Container not initialized.");
     }
     return this->graph.ObserveOutputStream(
         pe::graph::output_streams::kBlueTooth,
         [on_bluetooth](const mediapipe::Packet& output_packet) {
-            if(!output_packet.IsEmpty()){
+            if (!output_packet.IsEmpty()) {
                 auto bluetooth_timestamp = output_packet.Get<double>();
                 return on_bluetooth(bluetooth_timestamp);
             }
@@ -225,16 +255,18 @@ BackgroundContainer<TDeviceType, TOperationMode, TIntegrationMode>::
 template<platform_independence::DeviceType TDeviceType, settings::OperationMode TOperationMode, settings::IntegrationMode TIntegrationMode>
 absl::Status
 BackgroundContainer<TDeviceType, TOperationMode, TIntegrationMode>::
-    SetOnOutputFrameCallback(std::function<absl::Status(cv::Mat&)> on_output_frame) {
+SetOnOutputFrameCallback(std::function<absl::Status(cv::Mat&)> on_output_frame) {
     if (!this->initialized) {
         return absl::FailedPreconditionError("Container not initialized.");
     }
     return this->graph.ObserveOutputStream(
         pe::graph::output_streams::kOutputVideo,
         [this, on_output_frame](const mediapipe::Packet& output_packet) {
-            if(!output_packet.IsEmpty()){
+            if (!output_packet.IsEmpty()) {
                 cv::Mat output_frame_rgb;
-                absl::Status status = it::GetFrameFromPacket<TDeviceType>(output_frame_rgb, this->device_context, output_packet);
+                absl::Status status = it::GetFrameFromPacket<TDeviceType>(output_frame_rgb,
+                                                                          this->device_context,
+                                                                          output_packet);
                 return on_output_frame(output_frame_rgb);
             }
             return absl::OkStatus();
@@ -247,7 +279,7 @@ absl::Status BackgroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
     if (!this->initialized) {
         return absl::FailedPreconditionError("Container not initialized.");
     }
-    if (this->graph.GraphInputStreamsClosed()){
+    if (this->graph.GraphInputStreamsClosed()) {
         LOG(INFO) << "Graph already stopped.";
         return absl::OkStatus();
     }
@@ -256,7 +288,7 @@ absl::Status BackgroundContainer<TDeviceType, TOperationMode, TIntegrationMode>:
     MP_RETURN_IF_ERROR(this->graph.CloseAllPacketSources());
     MP_RETURN_IF_ERROR(this->graph.WaitUntilDone());
     this->previous_status_code = physiology::StatusCode::PROCESSING_NOT_STARTED;
-    this->graph_started = false;
+    this->running = false;
     LOG(INFO) << "Graph stopped.";
     return absl::OkStatus();
 }

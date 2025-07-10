@@ -19,20 +19,23 @@
 ###########################################################
 
 set(LIBRARY_NAME Gui)
-add_library(${LIBRARY_NAME} STATIC
-        confidence_thresholding.cpp
-        confidence_thresholding.hpp
-        opencv_value_indicator.cpp
-        opencv_value_indicator.hpp
-        opencv_hud.cpp
-        opencv_hud.hpp
-        opencv_element_fits.cpp
-        opencv_element_fits.hpp)
+add_library(${LIBRARY_NAME} STATIC)
 
 target_sources(${LIBRARY_NAME}
-    PRIVATE opencv_trace_plotter.cpp
+    PRIVATE
+        opencv_trace_plotter.cpp
+        confidence_thresholding.cpp
+        opencv_value_indicator.cpp
+        opencv_hud.cpp
+        opencv_element_fits.cpp
+        opencv_label.cpp
     PUBLIC FILE_SET HEADERS FILES
         opencv_trace_plotter.hpp
+        confidence_thresholding.hpp
+        opencv_value_indicator.hpp
+        opencv_hud.hpp
+        opencv_element_fits.hpp
+        opencv_label.hpp
     BASE_DIRS ${PROJECT_SOURCE_DIR}
 )
 

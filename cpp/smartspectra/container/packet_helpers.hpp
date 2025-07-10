@@ -23,21 +23,31 @@
 // === third-party includes (if any) ===
 #include <mediapipe/framework/output_stream_poller.h>
 #include <physiology/modules/messages/status.h>
+#include <google/protobuf/message.h>
 // === local includes (if any) ===
 
 namespace presage::smartspectra::container::packet_helpers {
 
+// Generic operator<< for protobuf messages
+// Allows streaming any protobuf message using ShortDebugString()
+template <typename T, typename = std::enable_if_t<std::is_base_of<google::protobuf::Message, T>::value>>
+std::ostream& operator<<(std::ostream& os, const T& proto) {
+    return os << proto.DebugString();
+}
+
+// functional predicate, with grabbing packet timestamp
 template<typename TPacketContentsType, typename TReportPredicate, bool TPrintTimestamp = false>
 inline absl::Status GetPacketContentsIfAny(
     TPacketContentsType& contents,
     bool& nonempty_packet_received,
     mediapipe::OutputStreamPoller& poller,
     const char* stream_name,
+    mediapipe::Timestamp& timestamp,
     TReportPredicate&& report_if
 ) {
     nonempty_packet_received = false;
-    mediapipe::Packet packet;
     if (poller.QueueSize() > 0) {
+        mediapipe::Packet packet;
         if (!poller.Next(&packet)) {
             return absl::UnknownError(
                 "Failed to get packet from output stream " + std::string(stream_name) + ".");
@@ -46,8 +56,8 @@ inline absl::Status GetPacketContentsIfAny(
                 nonempty_packet_received = true;
                 contents = packet.Get<TPacketContentsType>();
                 std::string extra_information = "";
+                timestamp = packet.Timestamp();
                 if (TPrintTimestamp) {
-                    auto timestamp = packet.Timestamp();
                     extra_information = " (timestamp: " + std::to_string(timestamp.Value()) + ")";
                 }
                 if (report_if()) {
@@ -59,6 +69,39 @@ inline absl::Status GetPacketContentsIfAny(
     return absl::OkStatus();
 }
 
+// functional predicate, without grabbing packet timestamp
+template<typename TPacketContentsType, typename TReportPredicate, bool TPrintTimestamp = false>
+inline absl::Status GetPacketContentsIfAny(
+    TPacketContentsType& contents,
+    bool& nonempty_packet_received,
+    mediapipe::OutputStreamPoller& poller,
+    const char* stream_name,
+    TReportPredicate&& report_if
+) {
+    mediapipe::Timestamp timestamp;
+    return GetPacketContentsIfAny<TPacketContentsType, TReportPredicate, TPrintTimestamp>(
+        contents, nonempty_packet_received, poller, stream_name, timestamp, std::forward<TReportPredicate>(report_if)
+    );
+}
+
+// constant boolean predicate, with grabbing packet timestamp
+template<typename TPacketContentsType>
+inline absl::Status GetPacketContentsIfAny(
+    TPacketContentsType& contents,
+    bool& nonempty_packet_received,
+    mediapipe::OutputStreamPoller& poller,
+    const char* string_name,
+    mediapipe::Timestamp& timestamp,
+    bool report_on_package_retrieval
+) {
+    return GetPacketContentsIfAny(
+        contents, nonempty_packet_received, poller, string_name, timestamp, [&report_on_package_retrieval]() {
+            return report_on_package_retrieval;
+        }
+    );
+}
+
+// constant boolean predicate, without grabbing packet timestamp
 template<typename TPacketContentsType>
 inline absl::Status GetPacketContentsIfAny(
     TPacketContentsType& contents,
@@ -67,8 +110,9 @@ inline absl::Status GetPacketContentsIfAny(
     const char* string_name,
     bool report_on_package_retrieval
 ) {
+    mediapipe::Timestamp timestamp;
     return GetPacketContentsIfAny(
-        contents, nonempty_packet_received, poller, string_name, [&report_on_package_retrieval]() {
+        contents, nonempty_packet_received, poller, string_name, timestamp, [&report_on_package_retrieval]() {
             return report_on_package_retrieval;
         }
     );

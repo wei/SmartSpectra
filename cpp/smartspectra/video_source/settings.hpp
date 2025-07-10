@@ -23,6 +23,7 @@
 // === third-party includes (if any) ===
 // === local includes (if any) ===
 #include "resolution_selection_mode.hpp"
+#include "input_transform.hpp"
 #include "camera/camera.hpp"
 
 
@@ -37,6 +38,7 @@ struct VideoSourceSettings {
     camera::CameraResolutionRange resolution_range = camera::CameraResolutionRange::Mid;
     camera::CaptureCodec codec = camera::CaptureCodec::MJPG;
     bool auto_lock = true;
+    InputTransformMode input_transform_mode = InputTransformMode::None;
 
     // === video file, priority #1, unless path empty
     std::string input_video_path;

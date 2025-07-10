@@ -25,11 +25,6 @@ namespace presage::smartspectra::video_source::capture {
 namespace pcam = presage::camera;
 namespace pcam_cv = presage::camera::opencv;
 
-CaptureVideoFileSource& CaptureVideoFileSource::operator>>(cv::Mat& frame) {
-    this->capture >> frame;
-    return *this;
-}
-
 bool CaptureVideoFileSource::SupportsExactFrameTimestamp() const {
     return true;
 }
@@ -39,6 +34,7 @@ int64_t CaptureVideoFileSource::GetFrameTimestamp() const {
 }
 
 absl::Status CaptureVideoFileSource::Initialize(const presage::smartspectra::video_source::VideoSourceSettings& settings) {
+    MP_RETURN_IF_ERROR(VideoSource::Initialize(settings));
     capture.open(settings.input_video_path);
     RET_CHECK(capture.isOpened());
     return absl::OkStatus();
@@ -50,6 +46,10 @@ int CaptureVideoFileSource::GetWidth() {
 
 int CaptureVideoFileSource::GetHeight() {
     return static_cast<int>(this->capture.get(cv::CAP_PROP_FRAME_HEIGHT));
+}
+
+void CaptureVideoFileSource::ProducePreTransformFrame(cv::Mat& frame) {
+    this->capture >> frame;
 }
 
 std::vector<int64_t> CaptureVideoAndTimeStampFile::ReadTimestampsFromFile(const std::string& filename) {
@@ -82,6 +82,15 @@ bool CaptureVideoAndTimeStampFile::SupportsExactFrameTimestamp() const {
 }
 
 absl::Status CaptureCameraSource::Initialize(const presage::smartspectra::video_source::VideoSourceSettings& settings) {
+    MP_RETURN_IF_ERROR(VideoSource::Initialize(settings));
+    if (settings.input_transform_mode == InputTransformMode::MirrorHorizontal) {
+        // This is a bit counter-intuitive. OpenCV's Capture doesn't work by default in mirror/face mode,
+        // so the expected behavior for "no horizontal mirroring" is actually to flip horizontally and vise versa.
+        this->flip_horizontal = false;
+    }
+    if (settings.input_transform_mode != InputTransformMode::None) {
+        LOG(INFO) << "Input transform mode: " << AbslUnparseFlag(settings.input_transform_mode);
+    }
 #ifdef __linux__
     MP_ASSIGN_OR_RETURN(std::string camera_name, pcam_v4l2::GetCameraName(settings.device_index));
     LOG(INFO) << "Camera name: " << camera_name;
@@ -206,13 +215,6 @@ absl::Status CaptureCameraSource::Initialize(const presage::smartspectra::video_
 
     RET_CHECK(capture.isOpened());
     return absl::OkStatus();
-}
-
-CaptureCameraSource& CaptureCameraSource::operator>>(cv::Mat& frame) {
-    this->capture >> frame;
-    //TODO: make horizontal flipping optional?
-    cv::flip(frame, frame, /*flip_code=HORIZONTAL*/ 1);
-    return *this;
 }
 
 bool CaptureCameraSource::SupportsExactFrameTimestamp() const {
@@ -373,6 +375,14 @@ static int64_t V4l2ConvertCaptureTimeToEpoch(int64_t v4l_ts_ms){
 
 void CaptureCameraSource::UseUptimeTimestampConversion() {
     this->convert_timestamp_ms = V4l2ConvertCaptureTimeToEpoch;
+}
+
+void CaptureCameraSource::ProducePreTransformFrame(cv::Mat& frame) {
+    this->capture >> frame;
+}
+
+InputTransformMode CaptureCameraSource::GetDefaultInputTransformMode() {
+    return InputTransformMode::MirrorHorizontal;
 }
 
 

@@ -21,17 +21,16 @@ let package = Package(
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-                    name: "SmartSpectraSwiftSDK",
-                    dependencies: [
-                        "PresagePreprocessing",
-                        .product(name: "SwiftProtobuf", package: "swift-protobuf")
-                        ],
-                    path: "swift/sdk/Sources/SmartSpectraSwiftSDK",
-                    exclude: ["../../Package.swift", "../../Package.resolved"],
-                    resources: [
-                        .process("Resources/PrivacyInfo.xcprivacy")
-                    ]
-                ),
+            name: "SmartSpectraSwiftSDK",
+            dependencies: [
+                "PresagePreprocessing",
+                .product(name: "SwiftProtobuf", package: "swift-protobuf")
+            ],
+            path: "swift/sdk/Sources/SmartSpectraSwiftSDK",
+            resources: [
+                .process("Resources/PrivacyInfo.xcprivacy")
+            ]
+        ),
         .testTarget(
             name: "SmartSpectraSwiftSDKTests",
             dependencies: ["SmartSpectraSwiftSDK"],

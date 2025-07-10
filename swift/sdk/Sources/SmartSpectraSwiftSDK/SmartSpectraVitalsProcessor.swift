@@ -9,7 +9,7 @@ import Foundation
 import PresagePreprocessing
 import CoreImage
 import UIKit
-import SwiftUICore
+import SwiftUI
 
 enum PresageProcessingStatus {
     case idle

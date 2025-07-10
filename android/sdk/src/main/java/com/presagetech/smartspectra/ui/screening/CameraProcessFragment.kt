@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit
 
 
 @ExperimentalCamera2Interop
-class CameraProcessFragment : Fragment() {
+internal class CameraProcessFragment : Fragment() {
 
 
     private var cameraHelper: MyCameraXPreviewHelper = MyCameraXPreviewHelper()

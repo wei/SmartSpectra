@@ -17,7 +17,7 @@ import timber.log.Timber
  * structure so we used navigation component to handle navigation between module Fragments.
  *
  * */
-class SmartSpectraActivity : AppCompatActivity() {
+internal class SmartSpectraActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

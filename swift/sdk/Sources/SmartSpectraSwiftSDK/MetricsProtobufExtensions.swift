@@ -43,7 +43,7 @@ public extension Array where Element: TimeStamped {
             self = newElements
             return
         }
-        
+
         // Fast path: If the first new element is later than the last existing element, append directly.
         if let lastExistingTime = self.last?.time,
            let newFirstTime = newElements.first?.time,
@@ -62,8 +62,9 @@ public extension Array where Element: TimeStamped {
         // If new elements extend past the current array, replace the overlapping section and then append the remainder.
         if lastNewTime > lastExistingTime {
             let remainderIndex = newElements.insertionIndexStrict(forTime: lastExistingTime)
+            let overlapElements = newElements[0..<remainderIndex]
             let remainder = newElements[remainderIndex..<newElements.count]
-            self.replaceSubrange(overlapRange, with: newElements)
+            self.replaceSubrange(overlapRange, with: overlapElements)
             self.append(contentsOf: remainder)
         } else {
             // Fully replace the overlapping portion.

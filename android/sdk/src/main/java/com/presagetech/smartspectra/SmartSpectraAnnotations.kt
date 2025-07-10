@@ -10,4 +10,4 @@ package com.presagetech.smartspectra
     AnnotationTarget.PROPERTY
 )
 @Retention(value = AnnotationRetention.BINARY)
-annotation class ExperimentalFeature
+internal annotation class ExperimentalFeature

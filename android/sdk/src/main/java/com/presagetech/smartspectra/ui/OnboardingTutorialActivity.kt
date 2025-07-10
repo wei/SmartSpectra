@@ -8,7 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.presagetech.smartspectra.R
 import com.presagetech.smartspectra.utils.PreferencesUtils
 
-class OnboardingTutorialActivity : AppCompatActivity() {
+internal class OnboardingTutorialActivity : AppCompatActivity() {
 
     private lateinit var tutorialImageView: ImageView
     private lateinit var tutorialDescriptionTextView: TextView

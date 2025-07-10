@@ -27,7 +27,7 @@ import java.util.concurrent.ExecutorService
 
 
 @ExperimentalCamera2Interop
-class MyCameraXPreviewHelper {
+internal class MyCameraXPreviewHelper {
     fun interface OnCameraImageProxyListener {
         fun onImageProxy(image: ImageProxy)
     }

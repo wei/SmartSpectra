@@ -64,7 +64,8 @@ const float OpenCvHud::no_rate_value_to_display = -1.0f;
 const int OpenCvHud::top_plot_area_margin = 20;
 const int OpenCvHud::bottom_plot_area_margin = 20;
 const int OpenCvHud::minimal_plot_area_height = 90;
-const int OpenCvHud::indicator_width = 280;
+const int OpenCvHud::indicator_width = 200;
+const int OpenCvHud::label_width = 150;
 const int OpenCvHud::minimal_plot_area_width = 200;
 
 const int OpenCvHud::minimal_width =
@@ -92,26 +93,35 @@ OpenCvHud::OpenCvHud(
             this->hud_area.height - OpenCvHud::top_plot_area_margin - OpenCvHud::bottom_plot_area_margin;
         const int single_trace_height = static_cast<int>(static_cast<float>(usable_plot_area_height) / 3.f - 1.f);
         const float sixth_trace_height = static_cast<float>(usable_plot_area_height) / 6.f;
-        const int trace_width = this->hud_area.width - OpenCvHud::indicator_width;
+        const int trace_width = this->hud_area.width - OpenCvHud::indicator_width - OpenCvHud::label_width;
         const int rate_indicator_x = this->hud_area.x + trace_width;
+        const int label_x = rate_indicator_x + OpenCvHud::indicator_width;
 
         physiology::MeasurementWithConfidence rate;
         rate.set_value(no_rate_value_to_display);
 
         auto make_group =
-            [this, &trace_width, &single_trace_height, &rate_indicator_x, &rate]
-                (int y, cv::Scalar confident_color, cv::Scalar unconfident_color) {
+            [this, &trace_width, &single_trace_height, &rate_indicator_x, &label_x, &rate]
+                (
+                    int y, cv::Scalar confident_color, cv::Scalar unconfident_color, const std::string& name,
+                    bool indicator_visible = true
+                ) {
                 return std::make_unique<MetricsGroup>(MetricsGroup{
                     OpenCvTracePlotter{this->hud_area.x, y, trace_width, single_trace_height, this->max_trace_points},
-                    OpenCvValueIndicator{rate_indicator_x, y + single_trace_height / 2, OpenCvHud::indicator_width,
-                     single_trace_height}, rate, true, true,
-                    std::move(confident_color), std::move(unconfident_color)});
+                    OpenCvValueIndicator{rate_indicator_x, y + single_trace_height / 2,
+                                         OpenCvHud::indicator_width, single_trace_height},
+                    OpenCvLabel{indicator_visible ? label_x : rate_indicator_x,
+                                y, OpenCvHud::label_width, single_trace_height, name},
+                    rate, true, true,
+                    std::move(confident_color), std::move(unconfident_color)
+                });
             };
         int pulse_group_y = this->hud_area.y + static_cast<int>(OpenCvHud::top_plot_area_margin + sixth_trace_height);
         this->pulse_group = make_group(
             pulse_group_y,
             std::move(pulse_confident_color),
-            std::move(pulse_unconfident_color)
+            std::move(pulse_unconfident_color),
+            "Pulse (Skin Chroma)"
         );
 
         int upper_breathing_group_y =
@@ -119,7 +129,8 @@ OpenCvHud::OpenCvHud(
         this->upper_breathing_group = make_group(
             upper_breathing_group_y,
             std::move(breathing_upper_confident_color),
-            std::move(breathing_upper_unconfident_color)
+            std::move(breathing_upper_unconfident_color),
+            "Breathing (Chest)"
         );
 
         int lower_breathing_group_y =
@@ -127,7 +138,9 @@ OpenCvHud::OpenCvHud(
         this->lower_breathing_group = make_group(
             lower_breathing_group_y,
             std::move(breathing_lower_confident_color),
-            std::move(breathing_lower_unconfident_color)
+            std::move(breathing_lower_unconfident_color),
+            "Breathing (Abdomen)",
+            /*indicator_visible=*/false
         );
         this->lower_breathing_group->display_rate = false;
     }
@@ -148,7 +161,6 @@ absl::Status OpenCvHud::Render(cv::Mat& image) {
     MP_RETURN_IF_ERROR(pulse_group->Render(image));
     MP_RETURN_IF_ERROR(upper_breathing_group->Render(image));
     MP_RETURN_IF_ERROR(lower_breathing_group->Render(image));
-
     return absl::OkStatus();
 }
 
@@ -164,6 +176,7 @@ absl::Status OpenCvHud::MetricsGroup::Render(cv::Mat& image) {
             MP_RETURN_IF_ERROR(this->rate_indicator.Render(image, this->rate.value(), color));
         }
     }
+    MP_RETURN_IF_ERROR(this->label.Render(image, color));
     return absl::OkStatus();
 }
 } // namespace presage::smartspectra::gui

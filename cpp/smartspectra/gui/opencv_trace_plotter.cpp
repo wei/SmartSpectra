@@ -78,13 +78,6 @@ void AppendOverlappingTimeSeries(
     }
 }
 
-template<typename TMeasurement>
-std::vector<cv::Point2i> ComputeRenderableTimeSeries2(
-    const std::deque<TMeasurement>& trace_measurements,
-
-    float value_scale_factor = 1.0, float time_scale_factor = 1.0, float y_offset = 0.0
-);
-
 void RenderTimeSeries(const std::vector<cv::Point2i>& points, cv::Mat& image, const cv::Scalar& color, int line_width);
 
 /**

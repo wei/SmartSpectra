@@ -50,6 +50,8 @@ ABSL_FLAG(pcam::CaptureCodec, codec, pcam::CaptureCodec::MJPG,
 ABSL_FLAG(bool, auto_lock, true,
           "If true, will try to use auto-exposure before recording and lock exposure when recording starts. "
           "If false, doesn't do this automatically.");
+ABSL_FLAG(vs::InputTransformMode, input_transform_mode, vs::InputTransformMode::Unspecified_EnumEnd,
+          absl::StrCat("Video input transformation mode. Possible values: ", vs::kInputTransformModeNameList));
 ABSL_FLAG(std::string, input_video_path, "",
           "Full path of video to load. Signifies prerecorded video mode will be used. When not provided, "
           "the app will attempt to use a webcam / stream.");
@@ -77,8 +79,12 @@ ABSL_FLAG(int, start_time_offset_ms, 0,
 ABSL_FLAG(bool, scale_input, true,
           "If true, uses input scaling in the ImageTransformationCalculator within the graph.");
 ABSL_FLAG(bool, enable_phasic_bp, false, "If true, enable the phasic blood pressure computation.");
+ABSL_FLAG(bool, use_full_range_face_detection, false, "If true, uses the full range face detection model.");
+ABSL_FLAG(bool, use_full_pose_landmarks, false, "If true, uses the full pose landmarks model.");
+ABSL_FLAG(bool, enable_pose_landmark_segmentation, false, "If true, enables pose landmark segmentation.");
 ABSL_FLAG(bool, enable_edge_metrics, false, "If true, enable edge metrics in the graph.");
 ABSL_FLAG(bool, print_graph_contents, false, "If true, print the graph contents.");
+ABSL_FLAG(bool, log_transfer_timing_info, false, "If true, log Edge<->Core transfer timing info.");
 ABSL_FLAG(int, verbosity, 1, "Verbosity level -- raise to print more.");
 ABSL_FLAG(std::string, api_key, "",
           "API key to use for the Physiology online service. "
@@ -111,6 +117,7 @@ ABSL_FLAG(std::string, output_directory, "out",
           "Directory where to save acquired metrics data as JSON. "
           "If it does not exist, the app will attempt to make one.");
 ABSL_FLAG(bool, enable_hud, true, "If true, enables metrics trace plotting & rate display HUD.");
+ABSL_FLAG(bool, enable_framerate_diagnostics, false, "If true, enable framerate diagnostics.");
 // endregion ===========================================================================================================
 
 absl::Status RunRestContinuousEdge(
@@ -119,69 +126,97 @@ absl::Status RunRestContinuousEdge(
     spectra::container::CpuContinuousRestForegroundContainer container(settings);
     bool enable_hud = absl::GetFlag(FLAGS_enable_hud);
     bool enable_edge_metrics = absl::GetFlag(FLAGS_enable_edge_metrics);
+    bool enable_framerate_diagnostics = absl::GetFlag(FLAGS_enable_framerate_diagnostics);
     bool save_to_disk = absl::GetFlag(FLAGS_save_metrics_to_disk);
     std::string output_directory = absl::GetFlag(FLAGS_output_directory);
     // assumes frame/output image is wider than 1270 px and taller than 410 px, adjust as needed
     spectra::gui::OpenCvHud hud(10, 0, 1260, 400);
-    spectra::gui::OpenCvTracePlotter edge_metrics_plotter(10, 450, 940, 100);
+    spectra::gui::OpenCvTracePlotter edge_metrics_plotter(10, 450, 910, 100);
+    spectra::gui::OpenCvLabel edge_metrics_label(920, 450, 150, 100, "Breathing (Edge)");
+    spectra::gui::OpenCvValueIndicator effective_core_fps_indicator(1200, 580, 60, 60);
+    spectra::gui::OpenCvLabel effective_core_fps_label(920, 565, 270, 60, "Effective FPS (Core):");
+    double effective_core_throughput = 0.0f;
+    spectra::gui::OpenCvValueIndicator effective_core_latency_indicator(1200, 650, 80, 60, 3);
+    spectra::gui::OpenCvLabel effective_core_latency_label(880, 635, 310, 60, "Effective latency (Core):");
+    double effective_core_latency = 0.0f;
 
 
-    container.OnCoreMetricsOutput =
-        [&settings, &hud, &enable_hud, &save_to_disk, &output_directory](
-        const presage::physiology::MetricsBuffer& metrics_buffer,
-        int64_t timestamp_milliseconds
-    ) {
-        std::string metrics_json_string;
-        google::protobuf::util::JsonPrintOptions options;
-        google::protobuf::util::MessageToJsonString(metrics_buffer, &metrics_json_string, options);
-
-        if (save_to_disk) {
-            if (!std::filesystem::exists(output_directory)) {
-                std::filesystem::create_directories(output_directory);
-            }
-            std::string output_path =
-                output_directory + std::filesystem::path::preferred_separator + "metrics_" +
-                std::to_string(timestamp_milliseconds) + ".json";
-            std::ofstream output_file(output_path);
-            output_file << metrics_json_string;
-            output_file.close();
-        }
-        if (settings.verbosity_level > 1) {
-            std::stringstream metrics_output;
-            metrics_output << "Received metrics from Physiology Core server at timestamp " << timestamp_milliseconds;
-            if (settings.verbosity_level > 2) {
-                metrics_output << ": " << metrics_json_string << std::endl;
-            } else {
-                metrics_output << "." << std::endl;
-            }
-            std::cout << metrics_output.str();
-        }
-        if (enable_hud) {
-            hud.UpdateWithNewMetrics(metrics_buffer);
-        }
+    MP_RETURN_IF_ERROR(container.SetOnStatusChange([](presage::physiology::StatusCode status_code) -> absl::Status {
+        std::cout << "Imaging status: " << presage::physiology::GetStatusDescription(status_code) << std::endl;
         return absl::OkStatus();
-    };
+    }));
+
+    MP_RETURN_IF_ERROR(container.SetOnCoreMetricsOutput(
+        [&settings, &hud, &enable_hud, &save_to_disk, &output_directory](
+            const presage::physiology::MetricsBuffer& metrics_buffer,
+            int64_t timestamp_milliseconds
+        ) {
+            std::string metrics_json_string;
+            google::protobuf::util::JsonPrintOptions options;
+            google::protobuf::util::MessageToJsonString(metrics_buffer, &metrics_json_string, options);
+
+            if (save_to_disk) {
+                if (!std::filesystem::exists(output_directory)) {
+                    std::filesystem::create_directories(output_directory);
+                }
+                std::string output_path =
+                    output_directory + std::filesystem::path::preferred_separator + "metrics_" +
+                    std::to_string(timestamp_milliseconds) + ".json";
+                std::ofstream output_file(output_path);
+                output_file << metrics_json_string;
+                output_file.close();
+            }
+            if (settings.verbosity_level > 1) {
+                std::stringstream metrics_output;
+                metrics_output << "Received metrics from Physiology Core server at timestamp "
+                               << timestamp_milliseconds;
+                if (settings.verbosity_level > 2) {
+                    metrics_output << ": " << metrics_json_string << std::endl;
+                } else {
+                    metrics_output << "." << std::endl;
+                }
+                std::cout << metrics_output.str();
+            }
+            if (enable_hud) {
+                hud.UpdateWithNewMetrics(metrics_buffer);
+            }
+            return absl::OkStatus();
+        }));
 
     if (enable_hud) {
-        container.OnVideoOutput =
-            [&hud, &enable_edge_metrics, &edge_metrics_plotter]
+        MP_RETURN_IF_ERROR(container.SetOnVideoOutput(
+            [&hud, &enable_edge_metrics, &edge_metrics_plotter, &edge_metrics_label,
+             &enable_framerate_diagnostics,
+             &effective_core_fps_indicator, &effective_core_fps_label, &effective_core_throughput,
+             &effective_core_latency_indicator, &effective_core_latency_label, &effective_core_latency]
                 (cv::Mat& output_frame, int64_t timestamp_milliseconds) {
                 auto status = hud.Render(output_frame);
-                if (!status.ok()) {
-                    return status;
+                if (!status.ok()) { return status; }
+                if (enable_edge_metrics) {
+                    const auto edge_color = cv::Scalar(0, 165, 255);
+                    status = edge_metrics_plotter.Render(output_frame, edge_color);
+                    if (!status.ok()) { return status; }
+                    status = edge_metrics_label.Render(output_frame, edge_color);
+                    if (!status.ok()) { return status; }
                 }
-                if (enable_edge_metrics){
-                    auto status = edge_metrics_plotter.Render(output_frame, cv::Scalar(0, 165, 255));
-                }
-                if (!status.ok()){
-                    return status;
+                if (enable_framerate_diagnostics) {
+                    const auto diagnostics_color = cv::Scalar(40, 200, 0);
+                    status = effective_core_fps_indicator.Render(output_frame, effective_core_throughput, diagnostics_color);
+                    if (!status.ok()) { return status; }
+                    status = effective_core_fps_label.Render(output_frame, diagnostics_color);
+                    if (!status.ok()) { return status; }
+                    status = effective_core_latency_indicator.Render(output_frame, effective_core_latency, diagnostics_color);
+                    if (!status.ok()) { return status; }
+                    status = effective_core_latency_label.Render(output_frame, diagnostics_color);
+                    if (!status.ok()) { return status; }
                 }
                 return absl::OkStatus();
-            };
+            }
+        ));
     }
 
-    if(enable_edge_metrics) {
-        container.OnEdgeMetricsOutput =
+    if (enable_edge_metrics) {
+        MP_RETURN_IF_ERROR(container.SetOnEdgeMetricsOutput(
             [&settings, &edge_metrics_plotter](const presage::physiology::Metrics& metrics) {
 
 
@@ -190,7 +225,7 @@ absl::Status RunRestContinuousEdge(
                 if (!upper_trace.empty()) {
 #ifdef PLOT_EDGE_TRACE_ACCURATE
                     const auto& first_measurement = *upper_trace.begin();
-                    if(first_measurement.stable()){
+                    if (first_measurement.stable()) {
                         edge_metrics_plotter.UpdateTraceWithSample(first_measurement);
                     }
 #else
@@ -211,7 +246,38 @@ absl::Status RunRestContinuousEdge(
                     std::cout << metrics_output.str();
                 }
                 return absl::OkStatus();
-            };
+            }));
+    }
+
+    if (enable_framerate_diagnostics) {
+        MP_RETURN_IF_ERROR(container.SetOnCorePerformanceTelemetry(
+            [&effective_core_throughput, &effective_core_latency, &enable_hud](
+                double effective_core_fps,
+                double effective_core_latency_seconds,
+                int64_t timestamp_microseconds
+            ) {
+                if (!enable_hud) {
+                    std::cout << "Effective Edge+Core Throughput: " << effective_core_fps << " FPS / HZ " << std::endl;
+                    std::cout << "Effective Edge+Core Latency: " << effective_core_latency_seconds << " seconds" << std::endl;
+                } else {
+                    effective_core_throughput = effective_core_fps;
+                    effective_core_latency = effective_core_latency_seconds;
+                }
+                return absl::OkStatus();
+            }
+        ));
+
+        MP_RETURN_IF_ERROR(container.SetOnFrameSentThrough(
+            [](
+                bool frame_sent_through,
+                int64_t timestamp_microseconds
+            ) {
+                if(!frame_sent_through){
+                    LOG(INFO) << "Dropped frame at timestamp " << timestamp_microseconds;
+                }
+                return absl::OkStatus();
+            }
+        ));
     }
 
     MP_RETURN_IF_ERROR(container.Initialize());
@@ -243,6 +309,7 @@ int main(int argc, char** argv) {
             absl::GetFlag(FLAGS_resolution_range),
             absl::GetFlag(FLAGS_codec),
             absl::GetFlag(FLAGS_auto_lock),
+            absl::GetFlag(FLAGS_input_transform_mode),
             absl::GetFlag(FLAGS_input_video_path),
             absl::GetFlag(FLAGS_input_video_time_path),
         },
@@ -260,13 +327,17 @@ int main(int argc, char** argv) {
         /*binary_graph=*/true,
         absl::GetFlag(FLAGS_enable_phasic_bp),
         /*enable_dense_facemesh_points=*/false,
+        absl::GetFlag(FLAGS_use_full_range_face_detection),
+        absl::GetFlag(FLAGS_use_full_pose_landmarks),
+        absl::GetFlag(FLAGS_enable_pose_landmark_segmentation),
         absl::GetFlag(FLAGS_enable_edge_metrics),
         absl::GetFlag(FLAGS_print_graph_contents),
+        absl::GetFlag(FLAGS_log_transfer_timing_info),
         absl::GetFlag(FLAGS_verbosity),
         settings::ContinuousSettings{
             absl::GetFlag(FLAGS_buffer_duration)
         },
-        settings::RestSettings {
+        settings::RestSettings{
             absl::GetFlag(FLAGS_api_key),
         }
     };
@@ -282,4 +353,3 @@ int main(int argc, char** argv) {
 
     return 0;
 }
-

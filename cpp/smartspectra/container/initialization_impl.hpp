@@ -62,6 +62,14 @@ static void AddGeneralSidePackets(
             mediapipe::MakePacket<bool>(settings.enable_edge_metrics);
     input_side_packets[pe::graph::input_side_packets::kModelDirectory] =
             mediapipe::MakePacket<std::string>(PHYSIOLOGY_EDGE_MODEL_DIRECTORY);
+    input_side_packets[pe::graph::input_side_packets::kUseFullRangeFaceDetection] =
+            mediapipe::MakePacket<bool>(settings.use_full_range_face_detection);
+    input_side_packets[pe::graph::input_side_packets::kUseFullPoseLandmarks] =
+            mediapipe::MakePacket<bool>(settings.use_full_pose_landmarks);
+    input_side_packets[pe::graph::input_side_packets::kEnablePoseLandmarkSegmentation] =
+            mediapipe::MakePacket<bool>(settings.enable_pose_landmark_segmentation);
+    input_side_packets[pe::graph::input_side_packets::kLogTransferTimingInfo] =
+            mediapipe::MakePacket<bool>(settings.log_transfer_timing_info);
 }
 
 template<settings::OperationMode TOperationMode, settings::IntegrationMode TIntegrationMode, bool TLog>

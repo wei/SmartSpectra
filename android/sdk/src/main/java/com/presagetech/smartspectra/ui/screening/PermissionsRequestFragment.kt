@@ -12,7 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import com.presagetech.smartspectra.R
 
-class PermissionsRequestFragment: Fragment() {
+internal class PermissionsRequestFragment: Fragment() {
 
     private lateinit var requestButton: View
     private lateinit var settingsButton: View

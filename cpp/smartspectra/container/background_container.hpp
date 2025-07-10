@@ -63,8 +63,6 @@ public:
     absl::Status StopGraph();
 
 private:
-    // state
-    bool graph_started;
     physiology::StatusCode previous_status_code = physiology::StatusCode::PROCESSING_NOT_STARTED;
 };
 

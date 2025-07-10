@@ -28,4 +28,9 @@ void WriteJsonDataToFile(
     const std::string& output_file_name,
     const std::string& short_data_description
 );
+
+void WriteJsonDataToFile(
+    const nlohmann::json& json_data,
+    const std::string& output_file_name
+);
 } // namespace presage::smartspectra::container::json_file_io

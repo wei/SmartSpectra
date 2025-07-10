@@ -26,14 +26,14 @@
 #include <physiology/modules/messages/status.pb.h>
 // === local includes (if any) ===
 #include "settings.hpp"
-#include <smartspectra/video_source/interface.hpp>
+#include <smartspectra/video_source/video_source.hpp>
 
 namespace presage::smartspectra::container::keyboard_input {
 
 absl::Status HandleKeyboardInput(
     bool& grab_frames,
     bool& recording,
-    video_source::VideoSourceInterface& _video_source,
+    video_source::VideoSource& v_source,
     const settings::GeneralSettings& settings,
     physiology::StatusCode error_code
 );

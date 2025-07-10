@@ -66,4 +66,4 @@ Once your app appears in the **Registered App(s) for OAuth** table:
 - **Android**
   Click **Download .xml** to fetch a `presage_services.xml` file and store in the root of your App's `/src/main/res/xml/presage_services.xml`. No additional code/configuration for authentication is needed.
 
-  ![android-oauth-config-location](images/xml_location_in_repo.png)
+  ![android-oauth-config-location](../android/media/xml_location_in_repo.png)

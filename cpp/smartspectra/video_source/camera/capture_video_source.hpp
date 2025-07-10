@@ -9,21 +9,21 @@
 #include <mediapipe/framework/port/opencv_video_inc.h>
 #include <absl/status/status.h>
 // === local includes (if any) ===
-#include <smartspectra/video_source/interface.hpp>
+#include <smartspectra/video_source/video_source.hpp>
 #include <smartspectra/video_source/settings.hpp>
 
 
 namespace presage::smartspectra::video_source::capture {
 
-class CaptureVideoFileSource : public VideoSourceInterface{
+class CaptureVideoFileSource : public VideoSource{
 public:
     absl::Status Initialize(const VideoSourceSettings& settings) override;
-    CaptureVideoFileSource& operator>>(cv::Mat& frame) override;
     bool SupportsExactFrameTimestamp() const override;
     int64_t GetFrameTimestamp() const override;
     int GetWidth() override;
     int GetHeight() override;
 protected:
+    void ProducePreTransformFrame(cv::Mat& frame) override;
     cv::VideoCapture capture;
 };
 
@@ -37,10 +37,9 @@ private:
     std::vector<int64_t> timestamps;
 };
 
-class CaptureCameraSource :  public VideoSourceInterface{
+class CaptureCameraSource :  public VideoSource{
 public:
     absl::Status Initialize(const VideoSourceSettings& settings) override;
-    CaptureCameraSource& operator>>(cv::Mat& frame) override;
     bool SupportsExactFrameTimestamp() const override;
     int64_t GetFrameTimestamp() const override;
 
@@ -51,13 +50,15 @@ public:
     absl::Status IncreaseExposure() override;
     absl::Status DecreaseExposure() override;
     bool SupportsExposureControls() override;
+    InputTransformMode GetDefaultInputTransformMode() override;
 
     void UseNoTimestampConversion();
     void UseUptimeTimestampConversion();
 
     int GetWidth() override;
     int GetHeight() override;
-
+protected:
+    void ProducePreTransformFrame(cv::Mat& frame) override;
 private:
     std::function<int64_t (int64_t input_timestamp_ms)> convert_timestamp_ms =
         [](int64_t input_timestamp_ms) { return input_timestamp_ms; };
@@ -66,6 +67,7 @@ private:
     cv::VideoCapture capture;
     presage::camera::AutoExposureConfiguration auto_exposure_configuration;
     bool capture_supports_timestamp = false;
+    bool flip_horizontal = true;
     int exposure_step = 10;
 };
 

@@ -13,8 +13,8 @@
 
 namespace presage::smartspectra::video_source {
 
-absl::StatusOr<std::unique_ptr<VideoSourceInterface>> BuildVideoSource(const VideoSourceSettings& settings) {
-    std::unique_ptr<VideoSourceInterface> video_source;
+absl::StatusOr<std::unique_ptr<VideoSource>> BuildVideoSource(const VideoSourceSettings& settings) {
+    std::unique_ptr<VideoSource> video_source;
     if (!settings.input_video_path.empty()) {
         // if timestamp txt file was provided
         if (!settings.input_video_time_path.empty()) {

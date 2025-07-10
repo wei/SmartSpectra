@@ -33,6 +33,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(BUILD_TESTS "Build unit tests." ON)
+option(SKIP_DEPS "Try to skip dependency discovery & installation (Useful for Doc-only builds)." OFF)
+option(BUILD_DOCS "Build documentation." OFF)
 option(BUILD_SAMPLES "Build examples." ON)
 option(INSTALL_SAMPLES "Install examples." ON)
 option(USE_SYSTEM_CATCH2 "Use Catch2 library installed on system instead of downloading and building from source." OFF)
@@ -97,14 +99,20 @@ include(cmake/extensions/SmartSpectra_dependencies.cmake)
 add_subdirectory(smartspectra)
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lab")
-    add_subdirectory(lab)
+    option(BUILD_LAB "Build lab" ON)
+    if (BUILD_LAB)
+        add_subdirectory(lab)
+    endif ()
 endif()
 
-set(BUILD_ON_PREM FALSE)
+set(HAS_ON_PREM FALSE)
 # TODO: find a way to build OnPrem without a local build
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/on_prem")
-    set(BUILD_ON_PREM TRUE)
-    add_subdirectory(on_prem)
+    set(HAS_ON_PREM TRUE)
+    option(BUILD_ON_PREM "Build OnPrem." ON)
+    if (BUILD_ON_PREM)
+        add_subdirectory(on_prem)
+    endif ()
 endif ()
 
 if (BUILD_TESTS)
@@ -121,3 +129,35 @@ include(${PROJECT_NAME}_install)
 include(${PROJECT_NAME}_uninstall)
 # must be used after _version and _install (uses *VERSION* family of variables and *PACKAGE_DESCRIPTION)
 include(${PROJECT_NAME}_packaging)
+
+# === Documentation ===
+if (BUILD_DOCS)
+    include(FetchContent)
+    FetchContent_Declare(
+            doxygen-awesome-css
+            URL https://github.com/jothepro/doxygen-awesome-css/archive/refs/heads/main.zip
+    )
+    FetchContent_MakeAvailable(doxygen-awesome-css)
+
+    # Save the location the files were cloned into
+    # This allows us to get the path to doxygen-awesome.css
+    FetchContent_GetProperties(doxygen-awesome-css SOURCE_DIR AWESOME_CSS_DIR)
+
+    # Generate the Doxyfile
+    set(DOXYFILE_IN ${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile.in)
+    set(DOXYFILE_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
+
+    configure_file(${DOXYFILE_IN} ${DOXYFILE_OUT} @ONLY)
+
+    find_package(Doxygen
+            REQUIRED dot
+            OPTIONAL_COMPONENTS mscgen dia
+    )
+
+    doxygen_add_docs(
+        doxygen
+        ALL
+        CONFIG_FILE ${DOXYFILE_OUT}
+    )
+
+endif ()

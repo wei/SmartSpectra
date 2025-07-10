@@ -127,9 +127,13 @@ struct GeneralSettings {
     bool binary_graph = true;
     bool enable_phasic_bp = false;
     bool enable_dense_facemesh_points = true;
+    bool use_full_range_face_detection = false;
+    bool use_full_pose_landmarks = false;
+    bool enable_pose_landmark_segmentation = false;
     // WARNING: enable_edge_metrics doesn't currently apply to spot mode
     bool enable_edge_metrics = false;
     bool print_graph_contents = false;
+    bool log_transfer_timing_info = false;
     int verbosity_level = 0;
 };
 // endregion ===========================================================================================================
