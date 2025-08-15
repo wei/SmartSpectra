@@ -1,0 +1,2302 @@
+# SmartSpectra Swift SDK - Complete Implementation Guide
+
+## Quick Start Guide
+
+### Complete Working Example
+
+```swift
+// ContentView.swift - Minimal complete implementation
+import SwiftUI
+import AVFoundation
+import SmartSpectraSwiftSDK
+
+struct ContentView: View {
+    @ObservedObject var sdk = SmartSpectraSwiftSDK.shared
+
+    init() {
+        // REQUIRED: Choose ONE authentication method
+
+        // Option 1: API Key Authentication
+        let apiKey = "YOUR_API_KEY_HERE"  // Get from https://physiology.presagetech.com
+        sdk.setApiKey(apiKey)
+
+        // Option 2: OAuth Authentication (TestFlight/App Store only)
+        // Copy PresageService-Info.plist from developer portal to app root
+        // No additional code needed - SDK auto-detects OAuth config
+
+        // Optional configurations
+        sdk.setSmartSpectraMode(.continuous)      // .spot or .continuous
+        sdk.setMeasurementDuration(30.0)          // 20.0 to 120.0 seconds
+        sdk.setCameraPosition(.front)             // .front or .back
+        sdk.setRecordingDelay(3)                  // Countdown before recording
+        sdk.setShowFps(false)                     // Show FPS overlay
+    }
+
+    var body: some View {
+        VStack {
+            // Main SDK UI components
+            SmartSpectraView()
+
+            // Access measurements
+            if let metrics = sdk.metricsBuffer {
+                let pulseRate = Int(metrics.pulse.strict.value)
+                let breathingRate = Int(metrics.breathing.strict.value)
+
+                Text("Pulse: \(pulseRate) BPM")
+                Text("Breathing: \(breathingRate) BPM")
+            }
+        }
+    }
+}
+```
+
+### Step-by-Step Integration
+
+1. **Add Package Dependency**
+   - In Xcode: File > Add Package Dependencies
+   - Add local package: `swift/sdk` folder
+   - Or use Swift Package Manager with Package.swift
+
+2. **Configure Info.plist**
+```xml
+<key>NSCameraUsageDescription</key>
+<string>Required for using camera to measure vitals</string>
+```
+
+3. **Authentication Setup**
+   - For API Key: Get key from https://physiology.presagetech.com
+   - For OAuth: Add PresageService-Info.plist to project root
+
+4. **Import and Initialize**
+```swift
+import SmartSpectraSwiftSDK
+
+// SDK is a singleton - access via shared instance
+let sdk = SmartSpectraSwiftSDK.shared
+```
+
+5. **Add UI Components**
+```swift
+SmartSpectraView()  // Complete UI with button and results
+// OR individual components:
+SmartSpectraButtonView()  // Just the checkup button
+SmartSpectraResultView()   // Just the results display
+```
+
+## Core Implementation Files
+
+### SmartSpectraSwiftSDK.swift - Main SDK Interface
+
+```swift
+// SmartSpectraSwiftSDK.swift
+// Main SDK class providing API access and configuration
+
+import Foundation
+import Combine
+import PresagePreprocessing
+import AVFoundation
+import SwiftUI
+
+public typealias MetricsBuffer = Presage_Physiology_MetricsBuffer
+public typealias Metrics = Presage_Physiology_Metrics
+
+// Main SDK class - singleton pattern for global access
+public class SmartSpectraSwiftSDK: ObservableObject {
+    // Singleton instance
+    public static let shared = SmartSpectraSwiftSDK()
+
+    // Published properties for SwiftUI binding
+    @Published public var meshPoints: [(x: Int16, y: Int16)] = []
+    @Published public var metricsBuffer: MetricsBuffer? {
+        didSet {
+            if config.smartSpectraMode == .spot {
+                updateResultText()
+            }
+        }
+    }
+    @Published public var edgeMetrics: Metrics?
+
+    // Internal UI state
+    @Published internal var resultText: String = "No Results\n..."
+    @Published internal var resultErrorText: String = ""
+
+    // Configuration object
+    internal var config: SmartSpectraSdkConfig = SmartSpectraSdkConfig.shared
+
+    // Private initializer for singleton
+    private init(apiKey: String = "", showFps: Bool = false) {
+        self.config.apiKey = apiKey
+        self.config.showFps = showFps
+
+        // Initiate authentication workflow
+        AuthHandler.shared.startAuthWorkflow { [weak self] error in
+            guard let self = self else { return }
+
+            if let error = error {
+                print("Authentication failed with error: \(error)")
+                self.updateErrorText("Authentication failed. Please try again.")
+            } else {
+                print("Authentication completed successfully.")
+            }
+        }
+    }
+
+    // Configuration methods
+    public func setShowFps(_ showFps: Bool) {
+        self.config.showFps = showFps
+    }
+
+    public func setSmartSpectraMode(_ mode: SmartSpectraMode) {
+        guard self.config.smartSpectraMode != mode else { return }
+        self.config.smartSpectraMode = mode
+    }
+
+    public func setMeasurementDuration(_ duration: Double) {
+        self.config.measurementDuration = duration
+    }
+
+    public func setRecordingDelay(_ delay: Int) {
+        self.config.recordingDelay = delay
+    }
+
+    public func setCameraPosition(_ cameraPosition: AVCaptureDevice.Position) {
+        guard self.config.cameraPosition != cameraPosition else { return }
+        self.config.cameraPosition = cameraPosition
+    }
+
+    public func showControlsInScreeningView(_ showControls: Bool) {
+        self.config.showControlsInScreeningView = showControls
+    }
+
+    public func setApiKey(_ apiKey: String) {
+        self.config.apiKey = apiKey
+    }
+
+    public func setHeadlessMode(_ headlessMode: Bool) {
+        self.config.headlessMode = headlessMode
+    }
+
+    // Internal methods for result processing
+    private func updateResultText() {
+        guard let metricsBuffer = metricsBuffer, metricsBuffer.isInitialized else {
+            resultText = "No Results\n..."
+            return
+        }
+
+        let strictPulseRate = round(metricsBuffer.pulse.strict.value)
+        let strictBreathingRate = round(metricsBuffer.breathing.strict.value)
+        let strictPulseRateInt = Int(strictPulseRate)
+        let strictBreathingRateInt = Int(strictBreathingRate)
+
+        let pulseRateText = "Pulse Rate: \(strictPulseRateInt == 0 ? "N/A": "\(strictPulseRateInt) BPM")"
+        let breathingRateText = "Breathing Rate: \(strictBreathingRateInt == 0 ? "N/A": "\(strictBreathingRateInt) BPM")"
+        resultText = "\(breathingRateText)\n\(pulseRateText)"
+
+        if strictPulseRateInt == 0 || strictBreathingRateInt == 0 {
+            print("Insufficient data for measurement. Strict Pulse Rate: \(strictPulseRate), Strict Breathing Rate: \(strictBreathingRate)")
+            resultErrorText = "Your data was insufficient for an accurate measurement. Please move to a better-lit location, hold still, and try again. For more guidance, see the tutorial in the dropdown menu of the 'i' icon next to 'Checkup.'"
+        } else {
+            resultErrorText = ""
+        }
+    }
+
+    // Server configuration (for testing only)
+    @available(*, deprecated, message: "This method is experimental and should not be used in production. Only use for testing purposes.")
+    public func useBetaServer() {
+        PresagePreprocessing.setServer(PresageServer.beta)
+    }
+
+    internal func updateErrorText(_ errorMessage: String) {
+        DispatchQueue.main.async {
+            if errorMessage.isEmpty {
+                self.resultErrorText = ""
+            } else {
+                self.resultErrorText = "Error: \(errorMessage)"
+            }
+        }
+    }
+}
+```
+
+### SmartSpectraSdkConfig.swift - Configuration Management
+
+```swift
+// SmartSpectraSdkConfig.swift
+// Configuration object for SDK settings
+
+import Foundation
+import AVFoundation
+import PresagePreprocessing
+
+// Measurement mode enumeration
+public enum SmartSpectraMode {
+    case spot        // Single measurement
+    case continuous  // Continuous monitoring
+
+    // Internal mapping to PresageMode
+    internal var presageMode: PresageMode {
+        switch self {
+        case .spot:
+            return .spot
+        case .continuous:
+            return .continuous
+        }
+    }
+}
+
+// SDK Configuration class
+internal class SmartSpectraSdkConfig: ObservableObject {
+    // Singleton instance
+    internal static let shared = SmartSpectraSdkConfig()
+
+    // Published properties for reactive updates
+    @Published internal var smartSpectraMode: SmartSpectraMode
+    @Published internal var measurementDuration: Double
+
+    // Configuration properties
+    internal var apiKey: String?
+    internal var showFps: Bool = false
+    internal var recordingDelay: Int = 3
+    internal var cameraPosition: AVCaptureDevice.Position = .front
+    internal var showControlsInScreeningView: Bool = true
+    internal var headlessMode: Bool = false
+
+    // Initialize with defaults
+    internal init(smartSpectraMode: SmartSpectraMode = .continuous, duration: Double = 30.0) {
+        self.smartSpectraMode = smartSpectraMode
+        self.measurementDuration = clipValue(duration, minValue: 20.0, maxValue: 120.0)
+    }
+}
+
+// Helper function to clip values to valid range
+fileprivate func clipValue(_ value: Double, minValue: Double, maxValue: Double) -> Double {
+    if value < minValue {
+        Logger.log("Warning: duration \(value) is below the minimum value. Clipping to \(minValue).")
+        return minValue
+    } else if value > maxValue {
+        Logger.log("Warning: duration \(value) is above the maximum value. Clipping to \(maxValue).")
+        return maxValue
+    } else {
+        return value
+    }
+}
+```
+
+### SmartSpectraVitalsProcessor.swift - Core Processing Engine
+
+```swift
+// SmartSpectraVitalsProcessor.swift
+// Handles camera input processing and vital signs extraction
+
+import Foundation
+import PresagePreprocessing
+import CoreImage
+import UIKit
+import SwiftUI
+
+// Processing status enumeration
+enum PresageProcessingStatus {
+    case idle
+    case processing
+    case processed
+    case error
+}
+
+// Async image converter for performance
+class ImageConverter {
+    private let context = CIContext(options: nil)
+    private let queue = DispatchQueue(label: "image.convert.queue")
+
+    func convertAsync(pixelBuffer: CVPixelBuffer, completion: @escaping (UIImage?) -> Void) {
+        queue.async {
+            autoreleasepool {
+                let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+                let rect = CGRect(x: 0, y: 0,
+                                  width: CVPixelBufferGetWidth(pixelBuffer),
+                                  height: CVPixelBufferGetHeight(pixelBuffer))
+                guard let cgImage = self.context.createCGImage(ciImage, from: rect) else {
+                    completion(nil)
+                    return
+                }
+                completion(UIImage(cgImage: cgImage))
+            }
+        }
+    }
+}
+
+// Main vitals processing class
+public class SmartSpectraVitalsProcessor: NSObject, ObservableObject {
+    // Singleton instance
+    public static let shared = SmartSpectraVitalsProcessor()
+
+    // Published properties for UI binding
+    @Published var imageOutput: UIImage?
+    @Published var processingStatus: PresageProcessingStatus = .idle
+    @Published var counter: Double = 0
+    @Published var fps: Int = 0
+    @Published public var lastStatusCode: StatusCode = .processingNotStarted
+    @Published public var statusHint: String = ""
+    @Published var isRecording: Bool = false
+
+    // Core processing components
+    var presageProcessing: PresagePreprocessing = PresagePreprocessing()
+    var lastTimestamp: Int?
+    var fpsValues: [Int] = []
+    let movingAveragePeriod = 10
+
+    // Dependencies
+    private var sdk: SmartSpectraSwiftSDK
+    private var avCaptureDeviceManager: AVCaptureDeviceManager = AVCaptureDeviceManager.shared
+    @State private var coreIsRunning: Bool = false
+    private let imageConverter = ImageConverter()
+    private weak var authHandler: AuthHandler?
+
+    private override init() {
+        sdk = SmartSpectraSwiftSDK.shared
+        authHandler = AuthHandler.shared
+        super.init()
+        presageProcessing.delegate = self
+    }
+
+    // Recording control
+    internal func setRecordingState(_ state: Bool) {
+        presageProcessing.buttonStateChanged(inFramework: state)
+        DispatchQueue.main.async {
+            self.isRecording = state
+        }
+    }
+
+    // Mode configuration
+    internal func changeProcessingMode(_ mode: SmartSpectraMode) {
+        guard presageProcessing.mode != mode.presageMode else { return }
+        presageProcessing.mode = mode.presageMode
+        sdk.config.smartSpectraMode = mode
+    }
+
+    internal func setProcessingCameraPosition(_ position: AVCaptureDevice.Position) {
+        guard presageProcessing.cameraPosition != position else { return }
+        presageProcessing.cameraPosition = position
+        sdk.config.cameraPosition = position
+    }
+
+    internal func setApiKey(_ apiKey: String) {
+        presageProcessing.apiKey = apiKey
+        sdk.config.apiKey = apiKey
+    }
+
+    internal func setSpotDuration(_ duration: Double) {
+        presageProcessing.spotDuration = duration
+        sdk.config.measurementDuration = duration
+    }
+
+    // Setup processing pipeline
+    private func setupProcessing() {
+        let oauth_enabled = authHandler?.isOauthEnabled ?? false
+
+        if !oauth_enabled {
+            guard let apiKey = sdk.config.apiKey, !apiKey.isEmpty else {
+                fatalError("API key missing")
+            }
+            setApiKey(apiKey)
+        }
+
+        changeProcessingMode(sdk.config.smartSpectraMode)
+        setProcessingCameraPosition(sdk.config.cameraPosition)
+        if sdk.config.smartSpectraMode == .spot {
+            setSpotDuration(sdk.config.measurementDuration)
+        }
+    }
+
+    // Start processing pipeline
+    public func startProcessing() {
+        guard let authHandler = authHandler else {
+            print("AuthHandler is not available.")
+            return
+        }
+
+        authHandler.startAuthWorkflow { [weak self] error in
+            guard let self = self else { return }
+
+            if let error = error {
+                print("Authentication failed with error: \(error)")
+                DispatchQueue.main.async {
+                    self.processingStatus = .error
+                }
+                return
+            }
+
+            if self.coreIsRunning {
+                self.stopProcessing()
+            }
+            DispatchQueue.main.async {
+                self.processingStatus = .idle
+            }
+            DispatchQueue.global(qos: .userInitiated).async {
+                self.setupProcessing()
+                self.presageProcessing.start()
+                DispatchQueue.main.async {
+                    self.coreIsRunning = true
+                }
+            }
+        }
+    }
+
+    // Stop processing pipeline
+    public func stopProcessing() {
+        DispatchQueue.global(qos: .userInitiated).async {
+            self.presageProcessing.stop()
+            DispatchQueue.main.async {
+                self.processingStatus = .idle
+                self.imageOutput = nil
+                self.coreIsRunning = false
+            }
+        }
+    }
+
+    // Start recording measurement
+    public func startRecording() {
+        UIApplication.shared.isIdleTimerDisabled = true
+        avCaptureDeviceManager.lockCameraSettings()
+        setRecordingState(true)
+    }
+
+    // Stop recording measurement
+    public func stopRecording() {
+        UIApplication.shared.isIdleTimerDisabled = false
+        avCaptureDeviceManager.unlockCameraSettings()
+        setRecordingState(false)
+    }
+}
+
+// PresagePreprocessing Delegate Implementation
+extension SmartSpectraVitalsProcessor: PresagePreprocessingDelegate {
+
+    // Handle frame updates
+    public func frameWillUpdate(_ tracker: PresagePreprocessing!, didOutputPixelBuffer pixelBuffer: CVPixelBuffer!, timestamp: Int) {
+        // Skip image conversion in headless mode for performance
+        guard !sdk.config.headlessMode else { return }
+
+        // Convert pixel buffer to UIImage asynchronously
+        imageConverter.convertAsync(pixelBuffer: pixelBuffer) { image in
+            if let image = image {
+                DispatchQueue.main.async {
+                    self.imageOutput = image
+                }
+            }
+        }
+    }
+
+    public func frameDidUpdate(_ tracker: PresagePreprocessing!, didOutputPixelBuffer pixelBuffer: CVPixelBuffer!) {
+        // Post-frame processing hook
+    }
+
+    // Handle status code changes
+    public func statusCodeChanged(_ tracker: PresagePreprocessing!, statusCode: StatusCode) {
+        if statusCode != lastStatusCode {
+            DispatchQueue.main.async {
+                self.lastStatusCode = statusCode
+                self.statusHint = tracker.getStatusHint(statusCode)
+            }
+        }
+        if sdk.config.smartSpectraMode == .spot && sdk.config.showFps {
+            updateFps()
+        }
+    }
+
+    // Handle metrics buffer updates
+    public func metricsBufferChanged(_ tracker: PresagePreprocessing!, serializedBytes: Data) {
+        do {
+            // Deserialize protobuf data
+            let metricsBuffer = try MetricsBuffer(serializedBytes: serializedBytes)
+
+            if sdk.config.smartSpectraMode == .spot {
+                DispatchQueue.main.async {
+                    self.processingStatus = .processed
+                }
+            }
+
+            DispatchQueue.main.async {
+                self.sdk.metricsBuffer = metricsBuffer
+            }
+        } catch {
+            print("Failed to deserialize MetricsBuffer: \(error.localizedDescription)")
+        }
+    }
+
+    // Handle edge metrics updates
+    public func edgeMetricsChanged(_ tracker: PresagePreprocessing!, serializedBytes: Data) {
+        do {
+            let edgeMetrics = try Metrics(serializedBytes: serializedBytes)
+
+            if sdk.config.smartSpectraMode == .spot {
+                DispatchQueue.main.async {
+                    self.processingStatus = .processed
+                }
+            }
+
+            DispatchQueue.main.async {
+                self.sdk.edgeMetrics = edgeMetrics
+            }
+
+            if sdk.config.smartSpectraMode == .continuous && sdk.config.showFps {
+                updateFps()
+            }
+        } catch {
+            print("Failed to deserialize Metrics: \(error.localizedDescription)")
+        }
+    }
+
+    // Handle timer updates
+    public func timerChanged(_ timerValue: Double) {
+        if counter != timerValue {
+            DispatchQueue.main.async {
+                self.counter = timerValue
+                if self.counter == 0.0 && self.processingStatus == .idle {
+                    self.processingStatus = .processing
+                }
+            }
+        }
+    }
+
+    // Handle face mesh points
+    public func receiveDenseFacemeshPoints(_ points: [NSNumber]) {
+        // Convert flattened array to coordinate tuples
+        let unflattenedPoints = stride(from: 0, to: points.count, by: 2).map {
+            (points[$0].int16Value, points[$0 + 1].int16Value)
+        }
+
+        DispatchQueue.main.async {
+            self.sdk.meshPoints = unflattenedPoints
+        }
+    }
+
+    // Handle processing errors
+    public func handleGraphError(_ error: Error) {
+        print("Error in vital processing: \(error)")
+        self.sdk.updateErrorText("Internal error occurred. Check your internet connection and retry. If it happens repeatedly contact customer support.")
+
+        DispatchQueue.main.async {
+            self.processingStatus = .error
+            self.sdk.metricsBuffer = nil
+        }
+    }
+
+    // Update FPS calculation
+    fileprivate func updateFps() {
+        let currentTime = Int(Date().timeIntervalSince1970 * 1000)
+
+        if let lastTimestamp = lastTimestamp {
+            let deltaTime = currentTime - lastTimestamp
+
+            fpsValues.append(deltaTime)
+            if fpsValues.count > movingAveragePeriod {
+                fpsValues.removeFirst()
+            }
+
+            let averageDeltaTime = max(Double(fpsValues.reduce(0, +)) / Double(fpsValues.count), 0.0001)
+
+            DispatchQueue.main.async {
+                self.fps = Int(round(1000 / averageDeltaTime))
+            }
+        }
+        lastTimestamp = currentTime
+    }
+}
+```
+
+### SmartSpectraView.swift - Main UI Component
+
+```swift
+// SmartSpectraView.swift
+// Main SwiftUI view combining button and results display
+
+import Foundation
+import SwiftUI
+import PresagePreprocessing
+import AVFoundation
+
+@available(iOS 15.0, *)
+public struct SmartSpectraView: View {
+
+    public init() {
+        // Public initializer for external use
+    }
+
+    public var body: some View {
+        VStack {
+            SmartSpectraButtonView()  // Checkup button with info
+            SmartSpectraResultView()   // Results display
+        }
+        .edgesIgnoringSafeArea(.all)
+    }
+}
+```
+
+### AuthHandler.swift - Authentication Management
+
+```swift
+// AuthHandler.swift
+// Handles OAuth and API key authentication
+
+import Foundation
+import DeviceCheck
+import CryptoKit
+import PresagePreprocessing
+
+// Authentication error types
+internal enum AuthError: Error {
+    case configurationFailed
+    case notSupported
+    case keyGenerationFailed
+    case challengeFetchFailed
+    case attestationFailed
+    case bundleIdFetchFailed
+    case tokenFetchFailed
+}
+
+// Authentication result types
+internal enum AuthResult {
+    case success(String)
+    case failure(Error)
+}
+
+// Main authentication handler
+internal class AuthHandler {
+    static let shared = AuthHandler()
+    private let service = DCAppAttestService.shared
+    private let keychainHelper = KeychainHelper.shared
+    private var plistData: [String: Any]?
+
+    // Check if OAuth is enabled
+    public var isOauthEnabled: Bool {
+        guard let plistData = plistData else { return false }
+        return plistData["IS_OAUTH_ENABLED"] as? Bool ?? false
+    }
+
+    private let authRunner = SerialTaskRunner()
+
+    private init() {
+        plistData = readPlist()
+    }
+
+    // Start authentication workflow
+    internal func startAuthWorkflow(completion: ((Error?) -> Void)? = nil) {
+        Task {
+            await authRunner.enqueue { [weak self] in
+                guard let self = self else {
+                    completion?(nil)
+                    return
+                }
+
+                guard self.isAuthTokenExpired(), self.isOauthEnabled else {
+                    completion?(nil)
+                    return
+                }
+
+                var attempt = 0
+                let maxAttempts = 5
+                var delay: UInt64 = 1_000_000_000 // 1 second
+
+                while attempt < maxAttempts {
+                    let result = await self.AuthWorkflow()
+                    switch result {
+                    case .success(let authToken):
+                        print("Successfully obtained access token from server.")
+                        completion?(nil)
+                        return
+                    case .failure(let error):
+                        print("Failed to complete App Authentication workflow: \(error)")
+                        attempt += 1
+                        if attempt < maxAttempts {
+                            print("Retrying in \(delay / 1_000_000_000) seconds...")
+                            try? await Task.sleep(nanoseconds: delay)
+                            delay *= 2 // Exponential backoff
+                        } else {
+                            print("Max retry attempts reached. Aborting.")
+                            completion?(error)
+                            return
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Main authentication workflow
+    private func AuthWorkflow() async -> AuthResult {
+        // Check prerequisites
+        guard let plistData = plistData else {
+            return .failure(AuthError.configurationFailed)
+        }
+        guard configureAuthClient(with: plistData) else {
+            return .failure(AuthError.configurationFailed)
+        }
+        guard service.isSupported else {
+            return .failure(AuthError.notSupported)
+        }
+
+        // Parallel fetch challenge and key
+        async let challenge = fetchAuthChallenge()
+        async let keyId = getAppAttestKeyId()
+
+        guard let fetchedChallenge = await challenge else {
+            return .failure(AuthError.challengeFetchFailed)
+        }
+        guard let fetchedKeyId = await keyId else {
+            return .failure(AuthError.keyGenerationFailed)
+        }
+
+        // Attest key with challenge
+        guard let attestationObject = await attestKey(keyId: fetchedKeyId, challenge: fetchedChallenge) else {
+            return .failure(AuthError.attestationFailed)
+        }
+
+        let challengeResponse = fetchedKeyId + ":" + attestationObject.base64EncodedString()
+        guard let bundleID = Bundle.main.bundleIdentifier else {
+            return .failure(AuthError.bundleIdFetchFailed)
+        }
+
+        // Get auth token
+        guard let authToken = respondToAuthChallenge(with: challengeResponse, for: bundleID) else {
+            return .failure(AuthError.tokenFetchFailed)
+        }
+
+        return .success(authToken)
+    }
+
+    // Get or generate App Attest key
+    private func getAppAttestKeyId() async -> String? {
+        // Try existing key first
+        if let existingKeyId = try? keychainHelper.retrieveKeyId() {
+            print("Found existing App Attest key, reusing the same key.")
+            return existingKeyId
+        }
+
+        // Generate new key
+        do {
+            let newKeyId = try await service.generateKey()
+            self.storeKeyId(newKeyId)
+            print("New App Attest key generated.")
+            return newKeyId
+        } catch {
+            if (error as? DCError)?.code == .invalidKey {
+                print("Invalid key detected, removing from keychain")
+                try? keychainHelper.deleteKeyId()
+
+                // Retry once
+                do {
+                    let retryKeyId = try await service.generateKey()
+                    self.storeKeyId(retryKeyId)
+                    print("Retry successful: New App Attest key generated.")
+                    return retryKeyId
+                } catch {
+                    print("Retrying key generation failed: \(error.localizedDescription)")
+                }
+            } else {
+                print("Error generating App Attest key: \(error.localizedDescription)")
+            }
+        }
+        return nil
+    }
+
+    // Attest key with challenge
+    private func attestKey(keyId: String, challenge: String) async -> Data? {
+        guard let challengeHash = Data(base64Encoded: challenge) else {
+            print("Invalid challenge format")
+            return nil
+        }
+
+        do {
+            let attestation = try await service.attestKey(keyId, clientDataHash: challengeHash)
+            print("Attestation object received from app attest service")
+            return attestation
+        } catch {
+            // Handle specific DeviceCheck errors
+            if let nsError = error as NSError?, nsError.domain == "com.apple.devicecheck.error" {
+                switch nsError.code {
+                case 2: // invalidInput
+                    print("Invalid input detected during attestation.")
+                    try? keychainHelper.deleteKeyId()
+                case 3: // invalidKey
+                    print("Invalid key detected during attestation, removing from keychain")
+                    try? keychainHelper.deleteKeyId()
+                default:
+                    print("Unhandled DeviceCheck error: \(nsError.code)")
+                }
+            } else {
+                print("Error during key attestation: \(error.localizedDescription)")
+            }
+        }
+        return nil
+    }
+
+    // Store key in keychain
+    private func storeKeyId(_ keyId: String) {
+        do {
+            try keychainHelper.saveKeyId(keyId)
+            print("Key ID stored successfully.")
+        } catch {
+            print("Error storing Key ID in Keychain: \(error)")
+        }
+    }
+
+    // Read OAuth configuration plist
+    private func readPlist() -> [String: Any]? {
+        guard let path = Bundle.main.path(forResource: "PresageService-Info", ofType: "plist") else {
+            print("PresageService-Info.plist not found. OAuth authentication will be disabled. Using API key authentication instead.")
+            return nil
+        }
+        guard let plistData = NSDictionary(contentsOfFile: path) as? [String: Any] else {
+            print("Error: Failed to load PresageService-Info.plist. OAuth authentication will be disabled.")
+            return nil
+        }
+        return plistData
+    }
+
+    // Configure auth client with plist data
+    private func configureAuthClient(with plistData: [String: Any]) -> Bool {
+        do {
+            try PresagePreprocessing.configureAuthClient(with: plistData)
+        } catch {
+            print("Error configuring AuthClient: \(error)")
+            return false
+        }
+        return true
+    }
+
+    // Fetch authentication challenge
+    private func fetchAuthChallenge() async -> String? {
+        guard let challenge = PresagePreprocessing.fetchAuthChallenge() else {
+            print("Error fetching server challenge.")
+            return nil
+        }
+        print("Server authentication challenge received")
+        return challenge
+    }
+
+    // Respond to auth challenge
+    private func respondToAuthChallenge(with challengeResponse: String, for bundleID: String) -> String? {
+        guard let token = PresagePreprocessing.respondToAuthChallenge(with: challengeResponse, for: bundleID) else {
+            print("Error getting auth token")
+            return nil
+        }
+        return token
+    }
+
+    // Check if token expired
+    internal func isAuthTokenExpired() -> Bool {
+        return PresagePreprocessing.isAuthTokenExpired()
+    }
+}
+```
+
+## Complete Usage Examples
+
+### ContentView.swift - Full Demo Implementation
+
+```swift
+// ContentView.swift
+// Complete demo app showing all SDK features
+
+import SwiftUI
+import AVFoundation
+import SmartSpectraSwiftSDK
+
+struct ContentView: View {
+    @ObservedObject var sdk = SmartSpectraSwiftSDK.shared
+
+    // Configuration states
+    @State var cameraPosition: AVCaptureDevice.Position = .front
+    @State var smartSpectraMode: SmartSpectraMode = .continuous
+    @State var measurementDuration: Double = 30.0
+
+    // App display configurations
+    let isCustomizationEnabled: Bool = true
+    let isFaceMeshEnabled: Bool = true
+
+    init() {
+        // REQUIRED: Authentication setup
+        // Option 1: API Key (for development)
+        let apiKey = "YOUR_API_KEY_HERE"
+        sdk.setApiKey(apiKey)
+
+        // Option 2: OAuth (for production - TestFlight/App Store)
+        // Add PresageService-Info.plist to project root
+
+        // Optional configurations
+        sdk.showControlsInScreeningView(isCustomizationEnabled)
+        sdk.setSmartSpectraMode(smartSpectraMode)
+        sdk.setMeasurementDuration(measurementDuration)
+        sdk.setShowFps(false)
+        sdk.setRecordingDelay(3)
+        sdk.setCameraPosition(cameraPosition)
+    }
+
+    var body: some View {
+        VStack {
+            // Main SDK view
+            SmartSpectraView()
+
+            // Runtime configuration controls
+            if isCustomizationEnabled {
+                // Camera switcher
+                Button(cameraPosition == .front ? "Switch to Back Camera": "Switch to Front Camera",
+                       systemImage: "camera.rotate") {
+                    cameraPosition = cameraPosition == .front ? .back : .front
+                    sdk.setCameraPosition(cameraPosition)
+                }
+
+                // Mode switcher
+                Button(smartSpectraMode == .spot ? "Switch to Continuous" : "Switch to Spot",
+                       systemImage: smartSpectraMode == .spot ? "waveform.path" : "chart.dots.scatter") {
+                    smartSpectraMode = smartSpectraMode == .spot ? .continuous : .spot
+                    sdk.setSmartSpectraMode(smartSpectraMode)
+                }
+
+                // Duration stepper
+                Stepper(value: $measurementDuration, in: 20...120, step: 5) {
+                    Text("Measurement Duration: \(measurementDuration.formatted(.number))")
+                }
+                .onChange(of: measurementDuration) {_ in
+                    sdk.setMeasurementDuration(measurementDuration)
+                }
+            }
+
+            // Metrics display with charts
+            ScrollView {
+                VStack {
+                    if let metrics = sdk.metricsBuffer {
+                        let pulse = metrics.pulse
+                        let breathing = metrics.breathing
+                        let bloodPressure = metrics.bloodPressure
+                        let face = metrics.face
+
+                        // Metadata section
+                        Section("Metadata") {
+                            if metrics.hasMetadata {
+                                VStack{
+                                    Text("ID:\(metrics.metadata.id)")
+                                    Text("Upload Timestamp:\(metrics.metadata.uploadTimestamp)")
+                                }
+                            }
+                        }
+
+                        // Pulse metrics
+                        Section("Pulse") {
+                            if !pulse.trace.isEmpty {
+                                LineChartView(
+                                    orderedPairs: pulse.trace.map { ($0.time, $0.value) },
+                                    title: "Pulse Pleth",
+                                    xLabel: "Time",
+                                    yLabel: "Value",
+                                    showYTicks: false
+                                )
+                            }
+
+                            if !pulse.rate.isEmpty {
+                                LineChartView(
+                                    orderedPairs: pulse.rate.map { ($0.time, $0.value) },
+                                    title: "Pulse Rates",
+                                    xLabel: "Time",
+                                    yLabel: "Value",
+                                    showYTicks: true
+                                )
+                                LineChartView(
+                                    orderedPairs: pulse.rate.map { ($0.time, $0.confidence) },
+                                    title: "Pulse Rate Confidence",
+                                    xLabel: "Time",
+                                    yLabel: "Value",
+                                    showYTicks: true
+                                )
+                            }
+                        }
+
+                        // Breathing metrics
+                        Section("Breathing") {
+                            if !breathing.upperTrace.isEmpty {
+                                LineChartView(
+                                    orderedPairs: breathing.upperTrace.map { ($0.time, $0.value) },
+                                    title: "Breathing Pleth",
+                                    xLabel: "Time",
+                                    yLabel: "Value",
+                                    showYTicks: false
+                                )
+                            }
+
+                            if !breathing.rate.isEmpty {
+                                LineChartView(
+                                    orderedPairs: breathing.rate.map { ($0.time, $0.value) },
+                                    title: "Breathing Rates",
+                                    xLabel: "Time",
+                                    yLabel: "Value",
+                                    showYTicks: true
+                                )
+                                LineChartView(
+                                    orderedPairs: breathing.rate.map { ($0.time, $0.confidence) },
+                                    title: "Breathing Rate Confidence",
+                                    xLabel: "Time",
+                                    yLabel: "Value",
+                                    showYTicks: true
+                                )
+                            }
+
+                            if !breathing.amplitude.isEmpty {
+                                LineChartView(
+                                    orderedPairs: breathing.amplitude.map { ($0.time, $0.value) },
+                                    title: "Breathing Amplitude",
+                                    xLabel: "Time",
+                                    yLabel: "Value",
+                                    showYTicks: true
+                                )
+                            }
+
+                            if !breathing.apnea.isEmpty {
+                                LineChartView(
+                                    orderedPairs: breathing.apnea.map { ($0.time, $0.detected ? 1.0 : 0.0) },
+                                    title: "Apnea Detection",
+                                    xLabel: "Time",
+                                    yLabel: "Value",
+                                    showYTicks: true
+                                )
+                            }
+
+                            if !breathing.baseline.isEmpty {
+                                LineChartView(
+                                    orderedPairs: breathing.baseline.map { ($0.time, $0.value) },
+                                    title: "Breathing Baseline",
+                                    xLabel: "Time",
+                                    yLabel: "Value",
+                                    showYTicks: true
+                                )
+                            }
+
+                            if !breathing.respiratoryLineLength.isEmpty {
+                                LineChartView(
+                                    orderedPairs: breathing.respiratoryLineLength.map { ($0.time, $0.value) },
+                                    title: "Respiratory Line Length",
+                                    xLabel: "Time",
+                                    yLabel: "Value",
+                                    showYTicks: true
+                                )
+                            }
+
+                            if !breathing.inhaleExhaleRatio.isEmpty {
+                                LineChartView(
+                                    orderedPairs: breathing.inhaleExhaleRatio.map { ($0.time, $0.value) },
+                                    title: "Inhale-Exhale Ratio",
+                                    xLabel: "Time",
+                                    yLabel: "Value",
+                                    showYTicks: true
+                                )
+                            }
+                        }
+
+                        // Blood pressure metrics
+                        Section("Blood Pressure") {
+                            if !bloodPressure.phasic.isEmpty {
+                                LineChartView(
+                                    orderedPairs: bloodPressure.phasic.map { ($0.time, $0.value) },
+                                    title: "Phasic",
+                                    xLabel: "Time",
+                                    yLabel: "Value",
+                                    showYTicks: true
+                                )
+                            }
+                        }
+
+                        // Face metrics
+                        Section("Face") {
+                            if !face.blinking.isEmpty {
+                                LineChartView(
+                                    orderedPairs: face.blinking.map { ($0.time, $0.detected ? 1.0 : 0.0) },
+                                    title: "Blinking",
+                                    xLabel: "Time",
+                                    yLabel: "Value",
+                                    showYTicks: true
+                                )
+                            }
+                            if !face.talking.isEmpty {
+                                LineChartView(
+                                    orderedPairs: face.talking.map { ($0.time, $0.detected ? 1.0 : 0.0) },
+                                    title: "Talking",
+                                    xLabel: "Time",
+                                    yLabel: "Value",
+                                    showYTicks: true
+                                )
+                            }
+                        }
+                    }
+
+                    // Face mesh visualization
+                    if !sdk.meshPoints.isEmpty && isFaceMeshEnabled {
+                        GeometryReader { geometry in
+                            ZStack {
+                                ForEach(Array(sdk.meshPoints.enumerated()), id: \.offset) { index, point in
+                                    Circle()
+                                        .fill(Color.blue)
+                                        .frame(width: 3, height: 3)
+                                        .position(
+                                            x: CGFloat(point.x) * geometry.size.width / 1280.0,
+                                            y: CGFloat(point.y) * geometry.size.height / 1280.0
+                                        )
+                                }
+                            }
+                        }
+                        .frame(width: 400, height: 400)
+                    }
+                }
+            }
+        }
+        .padding()
+    }
+}
+```
+
+### HeadlessSDKExample.swift - Programmatic Control
+
+```swift
+// HeadlessSDKExample.swift
+// Example of using SDK without default UI
+
+import SwiftUI
+import SmartSpectraSwiftSDK
+
+@available(iOS 16.0, *)
+struct HeadlessSDKExample: View {
+    @ObservedObject var sdk = SmartSpectraSwiftSDK.shared
+    @ObservedObject var vitalsProcessor = SmartSpectraVitalsProcessor.shared
+    @State private var isVitalMonitoringEnabled: Bool = false
+
+    init() {
+        // Authentication already configured in ContentView
+        // Set headless mode to disable image processing
+        sdk.setHeadlessMode(true)
+    }
+
+    var body: some View {
+        VStack {
+            GroupBox(label: Text("Vitals")) {
+                // Custom vitals plot view
+                ContinuousVitalsPlotView()
+
+                Grid {
+                    GridRow {
+                        Text("Status: \(vitalsProcessor.statusHint)")
+                    }
+                    GridRow {
+                        HStack {
+                            Text("Vitals Monitoring")
+                            Spacer()
+                            Button(isVitalMonitoringEnabled ? "Stop": "Start") {
+                                isVitalMonitoringEnabled.toggle()
+                                if isVitalMonitoringEnabled {
+                                    startVitalsMonitoring()
+                                } else {
+                                    stopVitalsMonitoring()
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 10)
+            }
+        }
+        .onDisappear {
+            stopVitalsMonitoring()
+        }
+    }
+
+    func startVitalsMonitoring() {
+        // Direct control of processing pipeline
+        vitalsProcessor.startProcessing()
+        vitalsProcessor.startRecording()
+    }
+
+    func stopVitalsMonitoring() {
+        vitalsProcessor.stopProcessing()
+        vitalsProcessor.stopRecording()
+    }
+}
+```
+
+### DemoAppView.swift - Tab-Based Navigation
+
+```swift
+// DemoAppView.swift
+// Main app view with tab navigation
+
+import SwiftUI
+
+struct DemoAppView: View {
+    var body: some View {
+        TabView {
+            ContentView()
+                .tabItem {
+                    Label("Checkup", systemImage: "heart.fill")
+                }
+
+            if #available(iOS 16.0, *) {
+                HeadlessSDKExample()
+                    .tabItem {
+                        Label("Headless Example", systemImage: "heart.text.square.fill")
+                    }
+            }
+        }
+    }
+}
+```
+
+### LineChartView.swift - Data Visualization
+
+```swift
+// LineChartView.swift
+// Chart component for displaying metrics
+
+import SwiftUI
+import Charts
+
+struct LineChartView: View {
+    let orderedPairs: [(time: Float, value: Float)]
+    let title: String
+    let xLabel: String
+    let yLabel: String
+    let showYTicks: Bool
+
+    var body: some View {
+        VStack {
+            Text(title)
+                .font(.headline)
+                .padding(.top)
+                .foregroundStyle(.gray)
+
+            if #available(iOS 16.0, *) {
+                // iOS 16+ Charts framework
+                Chart {
+                    ForEach(orderedPairs, id: \.time) { pair in
+                        LineMark(
+                            x: .value("Time", pair.time),
+                            y: .value("Value", pair.value)
+                        )
+                        .foregroundStyle(.red)
+                    }
+                }
+                .chartXAxis {
+                    AxisMarks(position: .bottom) { value in
+                        AxisGridLine()
+                        AxisTick()
+                        AxisValueLabel()
+                    }
+                }
+                .chartYAxis {
+                    if showYTicks {
+                        AxisMarks(position: .leading) { value in
+                            AxisGridLine()
+                            AxisTick()
+                            AxisValueLabel()
+                        }
+                    } else {
+                        AxisMarks(position: .leading) { _ in
+                            AxisGridLine().foregroundStyle(.clear)
+                            AxisTick().foregroundStyle(.clear)
+                            AxisValueLabel().foregroundStyle(.clear)
+                        }
+                    }
+                }
+                .chartXAxisLabel(xLabel, alignment: .center)
+                .frame(height: 200)
+                .padding()
+            } else {
+                // Fallback for iOS 15
+                let doubleOrderedPairs = orderedPairs.map {
+                    (time: Double($0.time), value: Double($0.value))
+                }
+                ChartsViewLegacy(
+                    orderedPairs: doubleOrderedPairs,
+                    title: title,
+                    xLabel: xLabel,
+                    yLabel: yLabel,
+                    showYTicks: showYTicks
+                )
+                .frame(height: 200)
+            }
+        }
+    }
+}
+
+// Legacy chart implementation for iOS 15
+struct ChartsViewLegacy: View {
+    let orderedPairs: [(time: Double, value: Double)]
+    let title: String
+    let xLabel: String
+    let yLabel: String
+    let showYTicks: Bool
+
+    private let paddingFactor: Double = 0.05
+    private let minimumRange: Double = 0.1
+
+    var body: some View {
+        GeometryReader { geometry in
+            VStack {
+                Canvas { context, size in
+                    var path = Path()
+
+                    // Draw line chart
+                    for (index, point) in orderedPairs.enumerated() {
+                        let xPosition = (point.time - minX) / (maxX - minX) * size.width
+                        let yPosition = adjustedMaxY == adjustedMinY ?
+                            size.height / 2 :
+                            (1 - (point.value - adjustedMinY) / (adjustedMaxY - adjustedMinY)) * (size.height - 20) + 10
+
+                        if index == 0 {
+                            path.move(to: CGPoint(x: xPosition, y: yPosition))
+                        } else {
+                            path.addLine(to: CGPoint(x: xPosition, y: yPosition))
+                        }
+                    }
+
+                    context.stroke(path, with: .color(.red), lineWidth: 2)
+
+                    // Draw X axis ticks
+                    for (index, xTick) in xTickValues.enumerated() {
+                        if index > 0 {
+                            let xPosition = (xTick - minX) / (maxX - minX) * size.width
+                            context.stroke(Path { path in
+                                path.move(to: CGPoint(x: xPosition, y: size.height))
+                                path.addLine(to: CGPoint(x: xPosition, y: size.height - 5))
+                            }, with: .color(.black), lineWidth: 1)
+                            context.draw(
+                                Text(String(format: "%.0f", xTick)).font(.caption),
+                                at: CGPoint(x: xPosition, y: size.height - 20),
+                                anchor: .top
+                            )
+                        }
+                    }
+
+                    // Draw Y axis ticks
+                    if showYTicks {
+                        let yTicks = yTickValues
+                        let range = adjustedMaxY - adjustedMinY
+                        let strideSize = range / Double(yTicks.count - 1)
+                        for yTick in yTicks {
+                            let yPosition = adjustedMaxY == adjustedMinY ?
+                                size.height / 2 :
+                                (1 - (yTick - adjustedMinY) / (adjustedMaxY - adjustedMinY)) * (size.height - 20) + 10
+                            let formatString = strideSize < 1 ? "%.2f" : "%.1f"
+                            context.draw(
+                                Text(String(format: formatString, yTick)).font(.caption),
+                                at: CGPoint(x: 10, y: yPosition),
+                                anchor: .leading
+                            )
+                        }
+                    }
+                }
+
+                HStack {
+                    Spacer()
+                    Text(xLabel).font(.caption).padding([.top, .trailing])
+                    Spacer()
+                }
+            }
+        }
+    }
+
+    // Chart calculation helpers
+    private var minXValue: Double {
+        orderedPairs.min(by: { $0.time < $1.time })?.time ?? 0
+    }
+
+    private var maxXValue: Double {
+        orderedPairs.max(by: { $0.time < $1.time })?.time ?? 1
+    }
+
+    private var minYValue: Double {
+        orderedPairs.min(by: { $0.value < $1.value })?.value ?? 0
+    }
+
+    private var maxYValue: Double {
+        orderedPairs.max(by: { $0.value < $1.value })?.value ?? 1
+    }
+
+    private var minX: Double {
+        return minXValue - paddingFactor * (maxXValue - minXValue)
+    }
+
+    private var maxX: Double {
+        return maxXValue + paddingFactor * (maxXValue - minXValue)
+    }
+
+    private var adjustedMinY: Double {
+        minYValue - paddingFactor * max(maxYValue - minYValue, minimumRange)
+    }
+
+    private var adjustedMaxY: Double {
+        maxYValue + paddingFactor * max(maxYValue - minYValue, minimumRange)
+    }
+
+    private var xTickValues: [Double] {
+        let strideSize = max(1.0, (maxX - minX) / 10)
+        return Array(stride(from: ceil(minX), through: floor(maxX), by: strideSize))
+    }
+
+    private var yTickValues: [Double] {
+        let numberOfTicks = 4
+        let range = adjustedMaxY - adjustedMinY
+        let strideSize = range / Double(numberOfTicks - 1)
+        return range == 0 ?
+            Array(repeating: adjustedMinY, count: numberOfTicks) :
+            Array(stride(from: adjustedMinY, through: adjustedMaxY, by: strideSize))
+    }
+}
+```
+
+### ContinuousVitalsPlotView.swift - Real-time Visualization
+
+```swift
+// ContinuousVitalsPlotView.swift
+// Real-time vitals plotting component
+
+import SwiftUI
+
+public struct ContinuousVitalsPlotView: View {
+    @ObservedObject var sdk = SmartSpectraSwiftSDK.shared
+    @State private var pulseRate: Int = 0
+    @State private var breathingRate: Int = 0
+    @State private var pulseTrace: [Presage_Physiology_Measurement] = []
+    @State private var breathingTrace: [Presage_Physiology_Measurement] = []
+
+    public init() {
+        // Public initializer for external use
+    }
+
+    public var body: some View {
+        VStack {
+            // Pulse rate display with real-time plot
+            GeometryReader { geometry in
+                HStack(alignment: .bottom) {
+                    Label("Pulse Rate\n\(pulseRate > 0 ? "\(pulseRate) bpm" : "--")",
+                          systemImage: "heart.fill")
+                        .font(.headline)
+                        .shadow(color: .white, radius: 8)
+                    Spacer()
+
+                    plotTrace(
+                        data: pulseTrace,
+                        width: geometry.size.width/2,
+                        height: geometry.size.height,
+                        color: Color.red,
+                        recentCount: 200
+                    )
+                    .shadow(color: .white, radius: 4)
+                    .padding(.horizontal, 10)
+                    .frame(width: geometry.size.width / 2)
+                }
+            }
+            .frame(height: 100)
+
+            // Breathing rate display with real-time plot
+            GeometryReader { geometry in
+                HStack(alignment: .bottom) {
+                    Label("Breathing Rate\n\(breathingRate > 0 ? "\(breathingRate) bpm" : "--")",
+                          systemImage: "lungs.fill")
+                        .font(.headline)
+                        .shadow(color: .white, radius: 8)
+                    Spacer()
+
+                    plotTrace(
+                        data: breathingTrace,
+                        width: geometry.size.width/2,
+                        height: geometry.size.height,
+                        color: Color.blue,
+                        recentCount: 400
+                    )
+                    .shadow(color: .white, radius: 4)
+                    .padding(.horizontal, 10)
+                    .frame(width: geometry.size.width / 2)
+                }
+            }
+            .frame(height: 100)
+        }
+        .onReceive(sdk.$metricsBuffer) { metricsBuffer in
+            guard let metricsBuffer = metricsBuffer, metricsBuffer.isInitialized else { return }
+
+            // Update rates
+            pulseRate = Int(sdk.metricsBuffer?.pulse.rate.last?.value.rounded() ?? 0)
+            breathingRate = Int(sdk.metricsBuffer?.breathing.rate.last?.value.rounded() ?? 0)
+
+            // Update traces with animation
+            withAnimation {
+                pulseTrace.appendProtoArray(contentsOf: metricsBuffer.pulse.trace)
+                breathingTrace.appendProtoArray(contentsOf: metricsBuffer.breathing.upperTrace)
+            }
+        }
+        .onDisappear {
+            // Reset state on disappear
+            pulseTrace = []
+            breathingTrace = []
+            pulseRate = 0
+            breathingRate = 0
+        }
+    }
+
+    // Plot trace data as path
+    private func plotTrace(
+        data: [Presage_Physiology_Measurement],
+        width: CGFloat,
+        height: CGFloat,
+        color: Color,
+        recentCount: Int
+    ) -> some View {
+        let displayedData = data.suffix(recentCount)
+
+        return Path { path in
+            guard displayedData.count > 1 else { return }
+
+            let minTime = displayedData.first!.time
+            let maxTime = displayedData.last!.time
+            let timeRange = maxTime - minTime
+
+            let minValue = displayedData.map { $0.value }.min()
+            let maxValue = displayedData.map { $0.value }.max()
+            let valueRange = maxValue! - minValue!
+
+            let points = displayedData.compactMap { measurement -> CGPoint? in
+                let x = CGFloat((measurement.time - minTime) / timeRange) * width
+                let y = height - CGFloat((measurement.value - minValue!) / valueRange) * height
+                guard !x.isNaN, !y.isNaN else { return nil }
+                return CGPoint(x: x, y: y)
+            }
+
+            guard let firstPoint = points.first else { return }
+
+            path.move(to: firstPoint)
+            points.dropFirst().forEach { point in
+                path.addLine(to: point)
+            }
+        }
+        .stroke(color, lineWidth: 2)
+    }
+}
+```
+
+## API Reference with Code Snippets
+
+### SmartSpectraSwiftSDK - Public Methods
+
+```swift
+// SDK Configuration Methods
+
+// Set API key for authentication
+sdk.setApiKey("YOUR_API_KEY_HERE")
+
+// Set measurement mode
+sdk.setSmartSpectraMode(.continuous)  // or .spot
+
+// Set measurement duration (20-120 seconds)
+sdk.setMeasurementDuration(30.0)
+
+// Set camera position
+sdk.setCameraPosition(.front)  // or .back
+
+// Set recording countdown delay
+sdk.setRecordingDelay(3)  // seconds
+
+// Enable/disable FPS display
+sdk.setShowFps(true)
+
+// Enable/disable controls in screening view
+sdk.showControlsInScreeningView(true)
+
+// Enable headless mode (no UI rendering)
+sdk.setHeadlessMode(true)
+
+// Switch to beta server (testing only)
+sdk.useBetaServer()  // Deprecated - testing only
+```
+
+### Observable Properties
+
+```swift
+// Access metrics buffer
+@Published public var metricsBuffer: MetricsBuffer?
+
+// Example usage:
+if let metrics = sdk.metricsBuffer {
+    // Pulse metrics
+    let pulseRate = metrics.pulse.strict.value
+    let pulseTrace = metrics.pulse.trace
+    let pulseConfidence = metrics.pulse.rate.map { $0.confidence }
+
+    // Breathing metrics
+    let breathingRate = metrics.breathing.strict.value
+    let breathingTrace = metrics.breathing.upperTrace
+    let apneaDetection = metrics.breathing.apnea
+
+    // Blood pressure
+    let phasic = metrics.bloodPressure.phasic
+
+    // Face metrics
+    let blinking = metrics.face.blinking
+    let talking = metrics.face.talking
+}
+
+// Access face mesh points
+@Published public var meshPoints: [(x: Int16, y: Int16)]
+
+// Example usage:
+ForEach(sdk.meshPoints, id: \.x) { point in
+    Circle()
+        .fill(Color.blue)
+        .frame(width: 3, height: 3)
+        .position(x: CGFloat(point.x), y: CGFloat(point.y))
+}
+
+// Access edge metrics (continuous mode)
+@Published public var edgeMetrics: Metrics?
+```
+
+### SmartSpectraVitalsProcessor - Direct Control
+
+```swift
+// Get processor instance
+let processor = SmartSpectraVitalsProcessor.shared
+
+// Start/stop processing pipeline
+processor.startProcessing()
+processor.stopProcessing()
+
+// Start/stop recording
+processor.startRecording()
+processor.stopRecording()
+
+// Observable properties
+@Published var imageOutput: UIImage?
+@Published var processingStatus: PresageProcessingStatus
+@Published var counter: Double  // Recording countdown
+@Published var fps: Int
+@Published var lastStatusCode: StatusCode
+@Published var statusHint: String
+@Published var isRecording: Bool
+
+// Example: Monitor processing status
+Text("Status: \(processor.statusHint)")
+if processor.processingStatus == .processed {
+    Text("Measurement complete!")
+}
+```
+
+### Data Structures
+
+```swift
+// MetricsBuffer structure
+public typealias MetricsBuffer = Presage_Physiology_MetricsBuffer
+
+// Key properties:
+metricsBuffer.pulse.strict.value          // Strict pulse rate
+metricsBuffer.pulse.rate                  // Array of rate measurements
+metricsBuffer.pulse.trace                 // Raw pulse signal
+
+metricsBuffer.breathing.strict.value      // Strict breathing rate
+metricsBuffer.breathing.rate              // Array of rate measurements
+metricsBuffer.breathing.upperTrace        // Breathing signal
+metricsBuffer.breathing.amplitude         // Breathing amplitude
+metricsBuffer.breathing.apnea            // Apnea detection
+metricsBuffer.breathing.baseline         // Baseline measurements
+
+metricsBuffer.bloodPressure.phasic       // Phasic BP measurements
+
+metricsBuffer.face.blinking              // Blink detection
+metricsBuffer.face.talking               // Talk detection
+
+metricsBuffer.metadata.id                // Measurement ID
+metricsBuffer.metadata.uploadTimestamp   // Upload timestamp
+
+// Measurement structure
+struct Measurement {
+    var time: Float      // Timestamp
+    var value: Float     // Measurement value
+    var confidence: Float // Confidence score
+}
+
+// Detection structure
+struct Detection {
+    var time: Float      // Timestamp
+    var detected: Bool   // Detection flag
+}
+```
+
+## Integration Patterns
+
+### SwiftUI Integration
+
+```swift
+// Basic integration
+struct MyView: View {
+    @ObservedObject var sdk = SmartSpectraSwiftSDK.shared
+
+    var body: some View {
+        VStack {
+            SmartSpectraView()
+
+            // React to measurements
+            if let metrics = sdk.metricsBuffer {
+                Text("Heart Rate: \(Int(metrics.pulse.strict.value)) BPM")
+            }
+        }
+    }
+}
+
+// Custom button integration
+struct CustomCheckupView: View {
+    @ObservedObject var viewModel = SmartSpectraButtonViewModel()
+
+    var body: some View {
+        Button("Start Checkup") {
+            viewModel.smartSpectraButtonTapped()
+        }
+    }
+}
+
+// Combine-based reactive updates
+class MyViewModel: ObservableObject {
+    private var cancellables = Set<AnyCancellable>()
+
+    init() {
+        SmartSpectraSwiftSDK.shared.$metricsBuffer
+            .sink { metrics in
+                // Handle metrics updates
+                self.processMetrics(metrics)
+            }
+            .store(in: &cancellables)
+    }
+}
+```
+
+### Data Flow Examples
+
+```swift
+// Real-time monitoring
+struct RealTimeMonitor: View {
+    @ObservedObject var sdk = SmartSpectraSwiftSDK.shared
+    @State private var pulseHistory: [Float] = []
+
+    var body: some View {
+        VStack {
+            // Start monitoring
+            Button("Start") {
+                SmartSpectraVitalsProcessor.shared.startProcessing()
+                SmartSpectraVitalsProcessor.shared.startRecording()
+            }
+
+            // Display real-time data
+            if let metrics = sdk.metricsBuffer {
+                ForEach(metrics.pulse.rate, id: \.time) { measurement in
+                    Text("\(measurement.time): \(measurement.value) BPM")
+                }
+            }
+        }
+        .onReceive(sdk.$metricsBuffer) { metrics in
+            // Update history
+            if let pulse = metrics?.pulse.rate.last?.value {
+                pulseHistory.append(pulse)
+            }
+        }
+    }
+}
+
+// Data export example
+func exportMeasurements() {
+    guard let metrics = sdk.metricsBuffer else { return }
+
+    let data = [
+        "pulse_rate": metrics.pulse.strict.value,
+        "breathing_rate": metrics.breathing.strict.value,
+        "timestamp": Date().timeIntervalSince1970,
+        "metadata_id": metrics.metadata.id
+    ]
+
+    // Export to your backend
+    sendToBackend(data)
+}
+```
+
+### State Management
+
+```swift
+// Centralized state management
+class VitalsStateManager: ObservableObject {
+    @Published var currentPulse: Int = 0
+    @Published var currentBreathing: Int = 0
+    @Published var measurementHistory: [Measurement] = []
+
+    private var cancellables = Set<AnyCancellable>()
+
+    init() {
+        // Subscribe to SDK updates
+        SmartSpectraSwiftSDK.shared.$metricsBuffer
+            .compactMap { $0 }
+            .sink { [weak self] metrics in
+                self?.updateState(with: metrics)
+            }
+            .store(in: &cancellables)
+    }
+
+    private func updateState(with metrics: MetricsBuffer) {
+        currentPulse = Int(metrics.pulse.strict.value)
+        currentBreathing = Int(metrics.breathing.strict.value)
+
+        // Store measurement
+        let measurement = Measurement(
+            pulse: currentPulse,
+            breathing: currentBreathing,
+            timestamp: Date()
+        )
+        measurementHistory.append(measurement)
+    }
+}
+
+struct Measurement {
+    let pulse: Int
+    let breathing: Int
+    let timestamp: Date
+}
+```
+
+### Camera Handling
+
+```swift
+// Camera permission handling
+import AVFoundation
+
+func requestCameraPermission() {
+    AVCaptureDevice.requestAccess(for: .video) { granted in
+        if granted {
+            // Start SDK
+            SmartSpectraVitalsProcessor.shared.startProcessing()
+        } else {
+            // Handle denial
+            print("Camera access denied")
+        }
+    }
+}
+
+// Camera switching
+func switchCamera() {
+    let currentPosition = sdk.config.cameraPosition
+    let newPosition: AVCaptureDevice.Position = currentPosition == .front ? .back : .front
+    sdk.setCameraPosition(newPosition)
+}
+
+// Custom camera settings (internal)
+class CameraManager {
+    func lockSettings() {
+        AVCaptureDeviceManager.shared.lockCameraSettings()
+    }
+
+    func unlockSettings() {
+        AVCaptureDeviceManager.shared.unlockCameraSettings()
+    }
+}
+```
+
+## Build Configuration
+
+### Package.swift - Swift Package Manager
+
+```swift
+// swift-tools-version: 5.10
+import PackageDescription
+
+let package = Package(
+    name: "SmartSpectraSwiftSDK",
+    platforms: [
+        .iOS(.v15)  // Minimum iOS 15
+    ],
+    products: [
+        .library(
+            name: "SmartSpectraSwiftSDK",
+            targets: ["SmartSpectraSwiftSDK"]),
+    ],
+    dependencies: [
+        // SwiftProtobuf for data serialization
+        .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.28.1"),
+    ],
+    targets: [
+        .target(
+            name: "SmartSpectraSwiftSDK",
+            dependencies: [
+                "PresagePreprocessing",  // Binary framework
+                .product(name: "SwiftProtobuf", package: "swift-protobuf")
+            ],
+            path: "Sources/SmartSpectraSwiftSDK",
+            resources: [
+                .process("Resources/PrivacyInfo.xcprivacy")
+            ]
+        ),
+        .testTarget(
+            name: "SmartSpectraSwiftSDKTests",
+            dependencies: ["SmartSpectraSwiftSDK"],
+            path: "Tests/SmartSpectraSwiftSDKTests"
+        ),
+        // Binary framework containing core processing
+        .binaryTarget(
+            name: "PresagePreprocessing",
+            path: "Sources/Frameworks/PresagePreprocessing.xcframework"
+        )
+    ]
+)
+```
+
+### Info.plist Requirements
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Required: Camera permission -->
+    <key>NSCameraUsageDescription</key>
+    <string>Required for using camera to measure vitals</string>
+
+    <!-- App configuration -->
+    <key>CFBundleIdentifier</key>
+    <string>com.your.app.identifier</string>
+
+    <key>CFBundleDisplayName</key>
+    <string>Your App Name</string>
+
+    <!-- UI configuration -->
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+
+    <!-- Prevent screen timeout during measurement -->
+    <key>UIApplicationSupportsIndirectInputEvents</key>
+    <true/>
+</dict>
+</plist>
+```
+
+### PresageService-Info.plist - OAuth Configuration
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- OAuth configuration from developer portal -->
+    <key>BUNDLE_ID</key>
+    <string>com.your.registered.bundle.id</string>
+
+    <key>IS_OAUTH_ENABLED</key>
+    <true/>
+
+    <key>CLIENT_ID</key>
+    <string>your_oauth_client_id</string>
+
+    <key>SUB</key>
+    <string>your_oauth_sub</string>
+
+    <key>PLIST_VERSION</key>
+    <string>1</string>
+</dict>
+</plist>
+```
+
+### Base.xcconfig - Build Settings
+
+```xcconfig
+// Base.xcconfig
+// Build configuration settings
+
+// Swift compilation conditions
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited)
+// Optional debug flags:
+// PLOT_NORMALIZED_BREATHING_TRACE
+// SPRITEKIT_DEBUG_INFO
+
+// Minimum iOS version
+IPHONEOS_DEPLOYMENT_TARGET = 15.0
+
+// Framework search paths
+FRAMEWORK_SEARCH_PATHS = $(inherited) "$(PROJECT_DIR)/Sources/Frameworks"
+
+// Enable bitcode (if required)
+ENABLE_BITCODE = NO
+
+// Swift language version
+SWIFT_VERSION = 5.0
+```
+
+## Code Snippets Library
+
+### Common Patterns
+
+```swift
+// Pattern: Safe metrics access
+extension SmartSpectraSwiftSDK {
+    var safePulseRate: Int {
+        guard let metrics = metricsBuffer,
+              metrics.pulse.strict.value > 0 else { return 0 }
+        return Int(metrics.pulse.strict.value.rounded())
+    }
+
+    var safeBreathingRate: Int {
+        guard let metrics = metricsBuffer,
+              metrics.breathing.strict.value > 0 else { return 0 }
+        return Int(metrics.breathing.strict.value.rounded())
+    }
+}
+
+// Pattern: Measurement validation
+func isValidMeasurement(_ metrics: MetricsBuffer) -> Bool {
+    return metrics.pulse.strict.value > 0 &&
+           metrics.breathing.strict.value > 0
+}
+
+// Pattern: Async measurement
+func performMeasurement() async throws -> MetricsBuffer {
+    return try await withCheckedThrowingContinuation { continuation in
+        var cancellable: AnyCancellable?
+
+        // Start measurement
+        SmartSpectraVitalsProcessor.shared.startProcessing()
+        SmartSpectraVitalsProcessor.shared.startRecording()
+
+        // Wait for result
+        cancellable = SmartSpectraSwiftSDK.shared.$metricsBuffer
+            .compactMap { $0 }
+            .first()
+            .sink { metrics in
+                SmartSpectraVitalsProcessor.shared.stopRecording()
+                SmartSpectraVitalsProcessor.shared.stopProcessing()
+                continuation.resume(returning: metrics)
+                cancellable?.cancel()
+            }
+    }
+}
+```
+
+### Customization Examples
+
+```swift
+// Custom result view
+struct CustomResultView: View {
+    @ObservedObject var sdk = SmartSpectraSwiftSDK.shared
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 20)
+                .fill(LinearGradient(
+                    colors: [.blue.opacity(0.3), .purple.opacity(0.3)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ))
+
+            VStack(spacing: 20) {
+                if let metrics = sdk.metricsBuffer {
+                    HStack {
+                        VitalCard(
+                            title: "Heart Rate",
+                            value: "\(Int(metrics.pulse.strict.value))",
+                            unit: "BPM",
+                            icon: "heart.fill",
+                            color: .red
+                        )
+
+                        VitalCard(
+                            title: "Breathing",
+                            value: "\(Int(metrics.breathing.strict.value))",
+                            unit: "BPM",
+                            icon: "lungs.fill",
+                            color: .blue
+                        )
+                    }
+                } else {
+                    ProgressView("Measuring...")
+                        .progressViewStyle(CircularProgressViewStyle())
+                }
+            }
+            .padding()
+        }
+        .frame(height: 150)
+    }
+}
+
+struct VitalCard: View {
+    let title: String
+    let value: String
+    let unit: String
+    let icon: String
+    let color: Color
+
+    var body: some View {
+        VStack {
+            Image(systemName: icon)
+                .foregroundColor(color)
+                .font(.title)
+            Text(title)
+                .font(.caption)
+            Text("\(value) \(unit)")
+                .font(.title2)
+                .bold()
+        }
+        .padding()
+        .background(Color.white.opacity(0.9))
+        .cornerRadius(15)
+    }
+}
+
+// Custom recording button
+struct CustomRecordButton: View {
+    @ObservedObject var processor = SmartSpectraVitalsProcessor.shared
+    @State private var isAnimating = false
+
+    var body: some View {
+        Button(action: toggleRecording) {
+            ZStack {
+                Circle()
+                    .fill(processor.isRecording ? Color.red : Color.green)
+                    .frame(width: 80, height: 80)
+
+                if processor.isRecording {
+                    Circle()
+                        .stroke(Color.red.opacity(0.3), lineWidth: 2)
+                        .frame(width: 100, height: 100)
+                        .scaleEffect(isAnimating ? 1.2 : 1.0)
+                        .opacity(isAnimating ? 0 : 1)
+                        .animation(
+                            Animation.easeOut(duration: 1)
+                                .repeatForever(autoreverses: false),
+                            value: isAnimating
+                        )
+                }
+
+                Image(systemName: processor.isRecording ? "stop.fill" : "play.fill")
+                    .foregroundColor(.white)
+                    .font(.title)
+            }
+        }
+        .onChange(of: processor.isRecording) { recording in
+            isAnimating = recording
+        }
+    }
+
+    func toggleRecording() {
+        if processor.isRecording {
+            processor.stopRecording()
+        } else {
+            processor.startRecording()
+        }
+    }
+}
+```
+
+### Error Handling Templates
+
+```swift
+// Error handling wrapper
+class SDKErrorHandler: ObservableObject {
+    @Published var errorMessage: String?
+    @Published var showError: Bool = false
+
+    func handleMeasurement() {
+        let processor = SmartSpectraVitalsProcessor.shared
+
+        // Monitor status codes
+        processor.$lastStatusCode
+            .sink { [weak self] status in
+                switch status {
+                case .faceNotVisible:
+                    self?.showError(message: "Please position your face in the camera view")
+                case .tooMuchMovement:
+                    self?.showError(message: "Please hold still during measurement")
+                case .poorLighting:
+                    self?.showError(message: "Please move to a better lit area")
+                case .processingComplete:
+                    self?.clearError()
+                default:
+                    break
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    private func showError(message: String) {
+        errorMessage = message
+        showError = true
+    }
+
+    private func clearError() {
+        errorMessage = nil
+        showError = false
+    }
+}
+
+// Retry logic
+func measureWithRetry(maxAttempts: Int = 3) async throws -> MetricsBuffer {
+    var lastError: Error?
+
+    for attempt in 1...maxAttempts {
+        do {
+            let metrics = try await performMeasurement()
+            if isValidMeasurement(metrics) {
+                return metrics
+            }
+            throw MeasurementError.invalidData
+        } catch {
+            lastError = error
+            if attempt < maxAttempts {
+                // Wait before retry with exponential backoff
+                try await Task.sleep(nanoseconds: UInt64(pow(2.0, Double(attempt)) * 1_000_000_000))
+            }
+        }
+    }
+
+    throw lastError ?? MeasurementError.maxRetriesExceeded
+}
+
+enum MeasurementError: Error {
+    case invalidData
+    case maxRetriesExceeded
+    case authenticationFailed
+}
+```
+
+## iOS Requirements and Notes
+
+- **Minimum iOS Version**: iOS 15.0
+- **Required Permissions**: Camera (NSCameraUsageDescription)
+- **Supported Devices**: iPhone with front/back camera
+- **Network**: Required for authentication and cloud processing
+- **Authentication**: API Key or OAuth (TestFlight/App Store only)
+
+## Common Customization Points
+
+1. **UI Customization**: All view components can be replaced with custom implementations
+2. **Mode Selection**: Switch between spot and continuous modes at runtime
+3. **Camera Selection**: Support for front and back cameras
+4. **Duration**: Configurable measurement duration (20-120 seconds)
+5. **Headless Mode**: Process without UI for background operation
+6. **Data Export**: Access raw metrics for custom processing
+
+## Typical Parameter Values
+
+- **Measurement Duration**: 30 seconds (default), 20-120 seconds (range)
+- **Recording Delay**: 3 seconds (default countdown)
+- **Camera Position**: .front (default), .back (alternative)
+- **Mode**: .continuous (default), .spot (single measurement)
+- **FPS Display**: false (default), true (for debugging)
+
+## Integration Checklist
+
+- [ ] Add SmartSpectraSwiftSDK package dependency
+- [ ] Configure Info.plist with camera permission
+- [ ] Set up authentication (API key or OAuth)
+- [ ] Import SmartSpectraSwiftSDK in your views
+- [ ] Add SmartSpectraView to your UI
+- [ ] Configure SDK settings as needed
+- [ ] Handle measurement results
+- [ ] Test on physical device (simulator not supported)
+- [ ] Implement error handling
+- [ ] Add network availability checks

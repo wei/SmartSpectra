@@ -26,6 +26,10 @@ struct DemoAppView: View {
                     .tabItem {
                         Label("Headless Example", systemImage: "heart.text.square.fill")
                     }
+                StaringContestView()
+                    .tabItem {
+                        Label("Staring Contest", systemImage: "eye.fill")
+                    }
             }
         }
     }
