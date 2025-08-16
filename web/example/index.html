@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>SmartSpectra Demo</title>
+</head>
+<body>
+  <h1>SmartSpectra Demo</h1>
+  <div>
+    Server URL: <input id="serverUrl" value="http://localhost:8080" />
+    API Key: <input id="apiKey" />
+    <button id="startBtn">Start</button>
+    <button id="stopBtn">Stop</button>
+  </div>
+  <video id="video" width="320" height="240" autoplay></video>
+  <div>
+    <p>Pulse: <span id="pulse">-</span></p>
+    <p>Breathing: <span id="breathing">-</span></p>
+    <p>Blinks: <span id="blinks">0</span></p>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
