@@ -1,0 +1,259 @@
+openapi: 3.0.0
+info:
+  title: SmartSpectra Web Wrapper API
+  description: |
+    A REST API wrapper for the SmartSpectra Physiology SDK that enables web-based applications 
+    to perform real-time physiological analysis using video streams.
+    
+    ## Architecture
+    
+    The API uses a hybrid approach:
+    - **Control Plane (REST)**: Session management via HTTP endpoints
+    - **Data Plane (WebSocket)**: Real-time video streaming and metrics delivery
+    
+    ## Usage Flow
+    
+    1. Create a session using `POST /sessions`
+    2. Connect to the WebSocket endpoint using the returned `stream_url`
+    3. Send video frames as binary data via WebSocket
+    4. Receive real-time physiological metrics via WebSocket
+    5. Delete the session using `DELETE /sessions/{session_id}` when done
+    
+    ## WebSocket Protocol
+    
+    The WebSocket endpoint `/streams/{session_id}` expects:
+    - **Incoming**: Binary video frame data (JPEG encoded)
+    - **Outgoing**: JSON messages containing physiological metrics
+    
+    ### Metrics Message Format
+    ```json
+    {
+      "type": "metrics",
+      "timestamp": 1234567890,
+      "session_id": "uuid-string",
+      "metrics": {
+        "heart_rate_bpm": 72.5,
+        "respiratory_rate_rpm": 16.2,
+        "blink_detected": false
+      }
+    }
+    ```
+  version: 1.0.0
+  contact:
+    name: SmartSpectra API Support
+    email: support@smartspectra.com
+  license:
+    name: Proprietary
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://api.smartspectra.com
+    description: Production server
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the current health status of the API server
+      operationId: getHealth
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: integer
+                    format: int64
+                    description: Unix timestamp
+                    example: 1640995200
+                  version:
+                    type: string
+                    example: "1.0.0"
+
+  /sessions:
+    post:
+      summary: Create a new analysis session
+      description: |
+        Creates a new physiological analysis session with the specified configuration.
+        Returns a session ID and WebSocket URL for streaming.
+      operationId: createSession
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                config:
+                  type: object
+                  properties:
+                    resolution:
+                      type: string
+                      enum: ["480p", "720p", "1080p"]
+                      default: "720p"
+                      description: Video resolution for analysis
+            examples:
+              default:
+                summary: Default configuration
+                value:
+                  config:
+                    resolution: "720p"
+              high_res:
+                summary: High resolution
+                value:
+                  config:
+                    resolution: "1080p"
+      responses:
+        '201':
+          description: Session created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  session_id:
+                    type: string
+                    format: uuid
+                    description: Unique session identifier
+                    example: "123e4567-e89b-12d3-a456-426614174000"
+                  stream_url:
+                    type: string
+                    format: uri
+                    description: WebSocket URL for streaming
+                    example: "ws://localhost:8080/streams/123e4567-e89b-12d3-a456-426614174000"
+                  config:
+                    type: object
+                    properties:
+                      resolution:
+                        type: string
+                        example: "720p"
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Session creation timestamp
+                    example: 1640995200
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Service unavailable (max sessions reached)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Maximum number of sessions reached"
+                  max_sessions:
+                    type: integer
+                    example: 100
+
+  /sessions/{session_id}:
+    delete:
+      summary: Delete an analysis session
+      description: |
+        Deletes an existing analysis session and cleans up all associated resources.
+        This will also close any active WebSocket connections for the session.
+      operationId: deleteSession
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          description: The session ID to delete
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Session deleted successfully
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Session not found"
+        details:
+          type: string
+          description: Additional error details
+          example: "The specified session ID does not exist"
+        session_id:
+          type: string
+          description: Related session ID (if applicable)
+          example: "123e4567-e89b-12d3-a456-426614174000"
+
+    SessionConfig:
+      type: object
+      properties:
+        resolution:
+          type: string
+          enum: ["480p", "720p", "1080p"]
+          default: "720p"
+          description: Video resolution for analysis
+
+    SessionResponse:
+      type: object
+      required:
+        - session_id
+        - stream_url
+        - config
+        - created_at
+      properties:
+        session_id:
+          type: string
+          format: uuid
+          description: Unique session identifier
+        stream_url:
+          type: string
+          format: uri
+          description: WebSocket URL for streaming
+        config:
+          $ref: '#/components/schemas/SessionConfig'
+        created_at:
+          type: integer
+          format: int64
+          description: Session creation timestamp
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API key authentication (currently handled server-side via environment variable)
+
+security:
+  - ApiKeyAuth: []
