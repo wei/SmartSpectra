@@ -1,0 +1,17 @@
+{
+  "name": "smartspectra-example",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "smartspectra-web-sdk": "file:../sdk"
+  },
+  "devDependencies": {
+    "@types/node": "^18.17.1",
+    "typescript": "^5.0.4",
+    "vite": "^4.4.9"
+  }
+}
