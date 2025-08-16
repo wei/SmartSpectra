@@ -4,8 +4,8 @@
 #include <google/protobuf/util/json_util.h>
 #include <physiology/modules/messages/status.pb.h>
 
-#include "../../cpp/smartspectra/container/background_container.hpp"
-#include "../../cpp/smartspectra/container/settings.hpp"
+#include "../../../cpp/smartspectra/container/background_container.hpp"
+#include "../../../cpp/smartspectra/container/settings.hpp"
 
 using namespace presage::smartspectra::container;
 namespace phy = physiology;

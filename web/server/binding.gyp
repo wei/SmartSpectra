@@ -6,7 +6,7 @@
       "cflags_cc": [ "-std=c++17" ],
       "include_dirs": [
         "<!(node -p \"require('node-addon-api').include\")",
-        "../cpp"
+        "../../cpp"
       ],
       "dependencies": [
         "<!(node -p \"require('node-addon-api').gyp\")"
