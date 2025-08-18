@@ -28,6 +28,9 @@
 
 namespace presage::smartspectra::container::benchmarking{
 
+/**
+ * @brief Update FPS benchmarking information for a captured frame.
+ */
 absl::Status HandleCameraBenchmarking(
     int64_t& i_frame,
     std::chrono::duration<double>& interval_capture_time,

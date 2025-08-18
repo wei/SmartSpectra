@@ -25,11 +25,6 @@ namespace presage::smartspectra::video_source::capture {
 namespace pcam = presage::camera;
 namespace pcam_cv = presage::camera::opencv;
 
-CaptureVideoFileSource& CaptureVideoFileSource::operator>>(cv::Mat& frame) {
-    this->capture >> frame;
-    return *this;
-}
-
 bool CaptureVideoFileSource::SupportsExactFrameTimestamp() const {
     return true;
 }
@@ -39,6 +34,7 @@ int64_t CaptureVideoFileSource::GetFrameTimestamp() const {
 }
 
 absl::Status CaptureVideoFileSource::Initialize(const presage::smartspectra::video_source::VideoSourceSettings& settings) {
+    MP_RETURN_IF_ERROR(VideoSource::Initialize(settings));
     capture.open(settings.input_video_path);
     RET_CHECK(capture.isOpened());
     return absl::OkStatus();
@@ -50,6 +46,10 @@ int CaptureVideoFileSource::GetWidth() {
 
 int CaptureVideoFileSource::GetHeight() {
     return static_cast<int>(this->capture.get(cv::CAP_PROP_FRAME_HEIGHT));
+}
+
+void CaptureVideoFileSource::ProducePreTransformFrame(cv::Mat& frame) {
+    this->capture >> frame;
 }
 
 std::vector<int64_t> CaptureVideoAndTimeStampFile::ReadTimestampsFromFile(const std::string& filename) {
@@ -82,6 +82,15 @@ bool CaptureVideoAndTimeStampFile::SupportsExactFrameTimestamp() const {
 }
 
 absl::Status CaptureCameraSource::Initialize(const presage::smartspectra::video_source::VideoSourceSettings& settings) {
+    MP_RETURN_IF_ERROR(VideoSource::Initialize(settings));
+    if (settings.input_transform_mode == InputTransformMode::MirrorHorizontal) {
+        // This is a bit counter-intuitive. OpenCV's Capture doesn't work by default in mirror/face mode,
+        // so the expected behavior for "no horizontal mirroring" is actually to flip horizontally and vise versa.
+        this->flip_horizontal = false;
+    }
+    if (settings.input_transform_mode != InputTransformMode::None) {
+        LOG(INFO) << "Input transform mode: " << AbslUnparseFlag(settings.input_transform_mode);
+    }
 #ifdef __linux__
     MP_ASSIGN_OR_RETURN(std::string camera_name, pcam_v4l2::GetCameraName(settings.device_index));
     LOG(INFO) << "Camera name: " << camera_name;
@@ -108,6 +117,9 @@ absl::Status CaptureCameraSource::Initialize(const presage::smartspectra::video_
     std::string camera_backend_name = pcam_cv::DeterminePreferredBackendNameForCamera(
         settings.device_index
     );
+    if (backend_to_use == cv::VideoCaptureAPIs::CAP_V4L2) {
+        this->UseUptimeTimestampConversion();
+    }
     LOG(INFO) << "Camera backend to use: " << camera_backend_name;
     // region ================================== CHECK PER-FRAME TIMESTAMP SUPPORT =================================
     LOG(INFO) << "Check if frame timestamps are supported by the camera capture interface...";
@@ -205,20 +217,13 @@ absl::Status CaptureCameraSource::Initialize(const presage::smartspectra::video_
     return absl::OkStatus();
 }
 
-CaptureCameraSource& CaptureCameraSource::operator>>(cv::Mat& frame) {
-    this->capture >> frame;
-    //TODO: make horizontal flipping optional?
-    cv::flip(frame, frame, /*flip_code=HORIZONTAL*/ 1);
-    return *this;
-}
-
 bool CaptureCameraSource::SupportsExactFrameTimestamp() const {
     return this->capture_supports_timestamp;
 }
 
 int64_t CaptureCameraSource::GetFrameTimestamp() const {
     return this->capture_supports_timestamp ?
-           static_cast<int64_t>(this->capture.get(cv::CAP_PROP_POS_MSEC) * 1000.0) // milliseconds -> microseconds
+           static_cast<int64_t>(this->convert_timestamp_ms(this->capture.get(cv::CAP_PROP_POS_MSEC)) * 1000.0) // milliseconds -> microseconds
                                             :
            static_cast<int64_t>(
                std::chrono::duration_cast<std::chrono::microseconds>(
@@ -344,6 +349,40 @@ int CaptureCameraSource::GetWidth() {
 
 int CaptureCameraSource::GetHeight() {
     return static_cast<int>(this->capture.get(cv::CAP_PROP_FRAME_HEIGHT));
+}
+
+void CaptureCameraSource::UseNoTimestampConversion() {
+    this->convert_timestamp_ms = [](int64_t input_timestamp_ms) { return input_timestamp_ms; };
+}
+
+static int64_t monotonic_to_epoch_offset_ms = -1;
+static int64_t V4l2ConvertCaptureTimeToEpoch(int64_t v4l_ts_ms){
+
+    if(monotonic_to_epoch_offset_ms == -1){
+        struct timeval epoch_time;  gettimeofday(&epoch_time, NULL);
+        struct timespec  vs_time;  clock_gettime(CLOCK_MONOTONIC, &vs_time);
+
+        long uptime_ms = vs_time.tv_sec * 1000 + (long)  round(vs_time.tv_nsec / 1000000.0);
+        long epoch_ms = epoch_time.tv_sec * 1000 + (long) round(epoch_time.tv_usec / 1000.0);
+
+        // add this quantity to the CV_CAP_PROP_POS_MEC to get unix time stamped frames
+        monotonic_to_epoch_offset_ms = epoch_ms - uptime_ms;
+
+    }
+
+    return monotonic_to_epoch_offset_ms + v4l_ts_ms;
+}
+
+void CaptureCameraSource::UseUptimeTimestampConversion() {
+    this->convert_timestamp_ms = V4l2ConvertCaptureTimeToEpoch;
+}
+
+void CaptureCameraSource::ProducePreTransformFrame(cv::Mat& frame) {
+    this->capture >> frame;
+}
+
+InputTransformMode CaptureCameraSource::GetDefaultInputTransformMode() {
+    return InputTransformMode::MirrorHorizontal;
 }
 
 

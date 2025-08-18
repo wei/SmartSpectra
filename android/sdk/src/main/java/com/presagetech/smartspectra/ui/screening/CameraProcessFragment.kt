@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit
 
 
 @ExperimentalCamera2Interop
-class CameraProcessFragment : Fragment() {
+internal class CameraProcessFragment : Fragment() {
 
 
     private var cameraHelper: MyCameraXPreviewHelper = MyCameraXPreviewHelper()
@@ -154,6 +154,9 @@ class CameraProcessFragment : Fragment() {
         toggleBrightMode(false)
     }
 
+    /**
+     * Adjusts screen brightness and keep-screen-on flags while recording.
+     */
     private fun toggleBrightMode(on: Boolean) {
         requireActivity().window.also {
             val brightness: Float
@@ -170,6 +173,9 @@ class CameraProcessFragment : Fragment() {
         }
     }
 
+    /**
+     * Restarts camera capture and measurement when the user toggles modes.
+     */
     private fun reset() {
         stopCamera()
         mediapipeViewModel.restart()
@@ -177,11 +183,19 @@ class CameraProcessFragment : Fragment() {
         startCamera()
     }
 
+    /**
+     * Shows or hides UI elements depending on the current
+     * [SmartSpectraSdkConfig.smartSpectraMode].
+     */
     private fun setupSmartSpectraModeViews() {
         timerTextView.isVisible = SmartSpectraSdkConfig.smartSpectraMode != SmartSpectraMode.CONTINUOUS
         screeningPlotView.isVisible = SmartSpectraSdkConfig.smartSpectraMode != SmartSpectraMode.SPOT
     }
 
+    /**
+     * Displays a short tip describing correct camera positioning for best
+     * measurements.
+     */
     private fun showInfoDialog() {
         val builder = AlertDialog.Builder(requireContext())
         builder.setTitle("Tip")
@@ -226,6 +240,7 @@ class CameraProcessFragment : Fragment() {
         )
     }
 
+    /** Starts the camera preview and begins streaming frames to the graph. */
     private fun startCamera() {
         cameraHelper.startCamera(
             requireActivity(),
@@ -240,11 +255,13 @@ class CameraProcessFragment : Fragment() {
         }
     }
 
+    /** Stops the camera and removes any frame listener. */
     private fun stopCamera() {
         cameraHelper.stopCamera()
         cameraHelper.onCameraImageProxyListener = null
     }
 
+    /** Swaps between front and back cameras and restarts preview. */
     private fun flipCamera() {
         cameraHelper.stopCamera()
         SmartSpectraSdkConfig.cameraPosition = if (SmartSpectraSdkConfig.cameraPosition == CameraSelector.LENS_FACING_FRONT) CameraSelector.LENS_FACING_BACK else CameraSelector.LENS_FACING_FRONT
@@ -258,6 +275,9 @@ class CameraProcessFragment : Fragment() {
         }
     }
 
+    /**
+     * Updates the UI to reflect the latest measurement [newState].
+     */
     private fun onProcessingStateChanged(newState: ProcessingStatus) {
         when (newState) {
             ProcessingStatus.IDLE -> {

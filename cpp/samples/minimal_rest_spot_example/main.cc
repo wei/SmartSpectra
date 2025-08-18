@@ -1,6 +1,5 @@
 #include <smartspectra/container/foreground_container.hpp>
 #include <glog/logging.h>
-#include <nlohmann/json.hpp>
 #include <google/protobuf/util/json_util.h>
 namespace spectra = presage::smartspectra;
 namespace settings = presage::smartspectra::container::settings;
@@ -15,15 +14,16 @@ int main(int argc, char** argv) {
     settings.spot.spot_duration_s = 30;
 
     spectra::container::SpotRestForegroundContainer<DeviceType::Cpu> container(settings);
-    container.OnMetricsOutput = [](const presage::physiology::MetricsBuffer& metrics, int64_t timestamp_microseconds) {
+    auto status = container.SetOnCoreMetricsOutput(
+        [](const presage::physiology::MetricsBuffer& metrics, int64_t timestamp_microseconds) {
         std::string metrics_json;
         google::protobuf::util::JsonPrintOptions options;
         options.add_whitespace = true;
         google::protobuf::util::MessageToJsonString(metrics, &metrics_json, options);
         LOG(INFO) << "Got metrics from Physiology REST API at " << timestamp_microseconds << " microseconds from first frame: " << metrics_json;
         return absl::OkStatus();
-    };
-    auto status = container.Initialize();
+    });
+    if (status.ok()) { status = container.Initialize(); }
     if (status.ok()) { status = container.Run(); }
 
     if (!status.ok()) {

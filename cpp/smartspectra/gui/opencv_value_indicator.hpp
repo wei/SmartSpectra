@@ -29,7 +29,7 @@ namespace presage::smartspectra::gui {
 
 class OpenCvValueIndicator {
 public:
-    OpenCvValueIndicator(int x, int y, int width, int height);
+    OpenCvValueIndicator(int x, int y, int width, int height, int precision_digits = 1);
     ~OpenCvValueIndicator() = default;
     absl::Status Render(cv::Mat& image, float value, cv::Scalar color);
     absl::Status RenderNA(cv::Mat& image, cv::Scalar color);
@@ -40,6 +40,7 @@ private:
     double font_scale;
     cv::Point2i text_origin;
     const int font_face = cv::FONT_HERSHEY_DUPLEX;
+    int precision_digits;
 
 };
 

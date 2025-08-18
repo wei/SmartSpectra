@@ -129,7 +129,7 @@ class AnimationStatusView: UIView {
     }
 
     override func draw(_ rect: CGRect) {
-        guard let context = UIGraphicsGetCurrentContext() else { return }
+        guard UIGraphicsGetCurrentContext() != nil else { return }
 
         let path = UIBezierPath()
 

@@ -8,27 +8,83 @@ The app contained in this repo is an example of using the SmartSpectra SDK and s
 
 ## Table of Contents
 
+- [Quick Start - Hello Vitals](#quick-start---hello-vitals)
 - [Prerequisites](#prerequisites)
-- [Quick Start for iOS demo app](#quick-start-for-ios-demo-app)
-- [Integration in your app](#integration-in-your-own-app)
+- [Demo App Guide](#demo-app-guide)
+- [Advanced Integration](#advanced-integration)
 - [Usage](#usage)
-- [Troubleshooting](#troubleshooting)
-- [Known Bugs](#known-bugs)
+- [Generating Documentation](#generating-documentation)
+- [Bugs & Troubleshooting](#bugs--troubleshooting)
 
-## Prerequisites
+## Quick Start - Hello Vitals
 
-- iOS 15.0 or later
-- Xcode 15.0 or later
-- Not usable with emulators or the Xcode simulator
+Get measuring vitals in under 5 minutes! This minimal example gets you up and running with heart rate and breathing measurements.
 
-### Authentication
+### Prerequisites
 
-You'll need an API key or Oauth config to use the SmartSpectra Swift SDK. You can register for an account and obtain an API key at <https://physiology.presagetech.com>.
+- **iOS 15.0 or later**
+- **Xcode 15.0 or later**
+- **API Key** from [physiology.presagetech.com](https://physiology.presagetech.com)
+- **Physical device** (not usable with emulators or the Xcode simulator)
 
-- **API Key**: Add your API key to the [ContentView.swift](samples/demo-app/ContentView.swift) file by replacing the placeholder `"YOUR_API_KEY_HERE"`.
-- **Oauth Config**: If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root directory.
+### Hello Vitals Example
 
-## Quick Start for iOS demo app
+Create a new iOS project in Xcode and add the SmartSpectra SDK dependency.
+
+**Add Package Dependency:**
+
+1. In Xcode, go to **File** → **Add Package Dependencies...**
+2. Enter the URL: `https://github.com/Presage-Security/SmartSpectra`
+3. Select **Branch** → **main**
+4. Add to your target
+
+**Info.plist:**
+
+Add camera permission to your `Info.plist`:
+
+```xml
+<key>NSCameraUsageDescription</key>
+<string>This app needs camera access to measure vitals with SmartSpectra.</string>
+```
+
+**ContentView.swift:**
+
+```swift
+import SwiftUI
+import SmartSpectraSwiftSDK
+
+struct ContentView: View {
+    @ObservedObject var sdk = SmartSpectraSwiftSDK.shared
+
+    init() {
+        // Replace with your API key from https://physiology.presagetech.com
+        sdk.setApiKey("YOUR_API_KEY")
+    }
+
+    var body: some View {
+        SmartSpectraView()
+    }
+}
+```
+
+### Run and Test
+
+1. **Build and run** your app on a physical device (camera required)
+2. **Allow camera permission** when prompted
+3. **Tap the measurement button** and follow on-screen instructions
+4. **View your vitals** - heart rate, breathing rate, and more!
+
+The SDK automatically handles camera permissions, measurement UI, and result display.
+
+![iOS Quickstart Demo](docs/ios-quickstart.gif)
+
+### Next Steps
+
+- **Customize measurements**: See [Advanced Integration](#advanced-integration) for configuration options
+- **Access raw metrics**: Learn about [metrics extraction](#extracting-and-using-metrics-data)
+- **Try the demo app**: Follow the [Demo App Guide](#demo-app-guide) for a full-featured example
+
+## Demo App Guide
 
 1. Clone the repository and open the SmartSpectra workspace in Xcode:
 
@@ -38,7 +94,7 @@ You'll need an API key or Oauth config to use the SmartSpectra Swift SDK. You ca
     ```
 
 2. Select the demo app target in Xcode.
-3. If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root. If you would like to use API key instead, navigate to [ContentView.swift](samples/demo-app/ContentView.swift) and replace the placeholder API key with your actual API key.
+3. Navigate to [ContentView.swift](samples/demo-app/ContentView.swift) and replace the placeholder API key with your actual API key obtained from PresageTech's developer portal (<https://physiology.presagetech.com/>) [See authentication](#authentication)
 4. Setup the signing and capabilities for the demo app target in Xcode. Make sure to select your development team and set a unique bundle identifier.
 5. Connect your iOS device to your computer.
 6. Select your device as the target in Xcode.
@@ -46,7 +102,9 @@ You'll need an API key or Oauth config to use the SmartSpectra Swift SDK. You ca
 8. Follow the on-screen instructions in the app to conduct a measurement and view the results.
 9. If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root.
 
-## Integration in your own app
+## Advanced Integration
+
+To integrate the SmartSpectra SDK into your iOS project, follow these steps:
 
 ### Swift Package Manager
 
@@ -64,6 +122,34 @@ For "Add to Target," select your project.
   - **Note**: Some Version of Xcode Navigate to File > Swift Packages > Add Package Dependency
     Paste the repository URL for SmartSpectra SDK in the search bar and press Enter. The URL is <https://github.com/Presage-Security/SmartSpectra>.
     Select Add Package
+
+### Camera Permission Setup
+
+The SmartSpectra SDK requires camera access to measure vitals. You must add the camera usage description to your app's `Info.plist` file:
+
+```xml
+<key>NSCameraUsageDescription</key>
+<string>This app needs camera access to measure vitals with SmartSpectra.</string>
+```
+
+### Authentication
+
+You'll need either an API key or Oauth config to use the SmartSpectra Swift SDK. You can find instructions on how to do that [here](../docs/authentication.md)
+
+- **API Key Option**: Add your API key to the [ContentView.swift](samples/demo-app/ContentView.swift) file by replacing the placeholder `"YOUR_API_KEY_HERE"`.
+- **Oauth Config Option**: With the downloaded Oauth plist config from obtained during [Authentication](../docs/authentication.md) and place into your app's root directory.
+![plist file location in repo](../docs/images/plist_location_in_repo.png)
+
+> **Note**
+> Oauth Option is currently only supported for TestFlight/App Store releases.
+
+## Swift SDK API Overview
+
+The library exposes a few key classes:
+
+- **SmartSpectraSwiftSDK**: shared instance for configuring and receiving measurement data.
+- **SmartSpectraView**: composite view containing the measurement button and result display.
+- **SmartSpectraVitalsProcessor**: processor for headless vital monitoring without UI.
 
 ## Usage
 
@@ -93,10 +179,14 @@ struct ContentView: View {
     @ObservedObject var sdk = SmartSpectraSwiftSDK.shared
 
     init() {
-        // (Required), If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root.
-        // (Required), Deprecated. set apiKey. API key from https://physiology.presagetech.com. Leave default if you want to use oauth. Oauth overrides api key
+        // (Required) Authentication. Only need to use one of the two options: API Key or Oauth below
+        // Authentication with Oauth currently only supported for apps in testflight/appstore
+        // Option 1: (authentication with api key) set apiKey. API key from https://physiology.presagetech.com. Leave default or remove if you want to use oauth. Oauth overrides api key
         let apiKey = "YOUR_API_KEY_HERE"
         sdk.setApiKey(apiKey)
+
+        // Option 2: (Oauth) If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root.
+        // No additional code needed for Oauth
 
     }
 
@@ -128,10 +218,14 @@ struct ContentView: View {
     let isFaceMeshEnabled: Bool = true
 
     init() {
-        // (Required), If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root.
-        // (Required), Deprecated. set apiKey. API key from https://physiology.presagetech.com. Leave default if you want to use oauth. Oauth overrides api key
+        // (Required) Authentication. Only need to use one of the two options: API Key or Oauth below
+        // Authentication with Oauth currently only supported for apps in testflight/appstore
+        // Option 1: (authentication with api key) set apiKey. API key from https://physiology.presagetech.com. Leave default or remove if you want to use oauth. Oauth overrides api key
         let apiKey = "YOUR_API_KEY_HERE"
         sdk.setApiKey(apiKey)
+
+        // Option 2: (Oauth) If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root.
+        // No additional code needed for Oauth
 
         // (optional) toggle display of camera and smartspectra mode controls in screening view
         sdk.showControlsInScreeningView(isCustomizationEnabled)
@@ -150,7 +244,7 @@ struct ContentView: View {
     var body: some View {
         // add smartspectra view
         SmartSpectraView()
-   }
+    }
 }
 ```
 
@@ -184,10 +278,14 @@ struct HeadlessSDKExample: View {
     @State private var isVitalMonitoringEnabled: Bool = false
 
     init() {
-        // (Required), If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root.
-        // (Required), Deprecated. set apiKey. API key from https://physiology.presagetech.com. Leave default if you want to use oauth. Oauth overrides api key
+        // (Required) Authentication. Only need to use one of the two options: API Key or Oauth below
+        // Authentication with Oauth currently only supported for apps in testflight/appstore
+        // Option 1: (authentication with api key) set apiKey. API key from https://physiology.presagetech.com. Leave default or remove if you want to use oauth. Oauth overrides api key
         let apiKey = "YOUR_API_KEY_HERE"
         sdk.setApiKey(apiKey)
+
+        // Option 2: (Oauth) If you want to use Oauth, copy the Oauth config from PresageTech's developer portal (<https://physiology.presagetech.com/>) to your app's root.
+        // No additional code needed for Oauth
     }
 
     var body: some View {
@@ -253,8 +351,6 @@ if let metrics = sdk.metricsBuffer {
       print("Breathing rate: \(rate.value), time: \(rate.time), confidence: \(rate.confidence)")
   }
 }
-
-
 ```
 
 ### Detailed `MetricsBuffer` Struct Descriptions
@@ -265,6 +361,9 @@ if let metrics = sdk.metricsBuffer {
 > ```swift
 > typealias MetricsBuffer = Presage_Physiology_MetricsBuffer
 > ```
+
+> **TIP**
+> `MetricsBuffer` is generated from a Protobuf message. The full descriptions of `MetricsBuffer` and `Metrics` messages, as well as the messages composing them, can currently be found in [SmartSpectra Protocol Buffer Reference](https://docs.physiology.presagetech.com/cpp/protobuf_reference.html).
 
 Metrics Buffer contains the following parent structs:
 
@@ -394,36 +493,47 @@ do {
 
 ### Displaying face mesh points
 
-You can display the face mesh points by following the example in [ContentView.swift](samples/demo-app/ContentView.swift)
+You can display the face mesh points by accessing them from the edge metrics. The dense face landmarks are now available through the edge metrics system for continuous mode processing. Here's an example from [ContentView.swift](samples/demo-app/ContentView.swift):
 
 ```Swift
-if !sdk.meshPoints.isEmpty {
-   // Visual representation of mesh points
-   GeometryReader { geometry in
+if let edgeMetrics = sdk.edgeMetrics, 
+   edgeMetrics.hasFace && !edgeMetrics.face.landmarks.isEmpty {
+   // Visual representation of mesh points from edge metrics
+   if let latestLandmarks = edgeMetrics.face.landmarks.last {
+      GeometryReader { geometry in
          ZStack {
-            ForEach(Array(sdk.meshPoints.enumerated()), id: \.offset) { index, point in
+            ForEach(Array(latestLandmarks.value.enumerated()), id: \.offset) { index, landmark in
                Circle()
                      .fill(Color.blue)
                      .frame(width: 3, height: 3)
-                     .position(x: CGFloat(point.x) * geometry.size.width / 1280.0,
-                           y: CGFloat(point.y) * geometry.size.height / 1280.0)
+                     .position(x: CGFloat(landmark.x) * geometry.size.width / 1280.0,
+                           y: CGFloat(landmark.y) * geometry.size.height / 1280.0)
             }
          }
+      }
+      .frame(width: 400, height: 400) // Adjust the height as needed
    }
-   .frame(width: 400, height: 400) // Adjust the height as needed
 }
 ```
 
-Since the mesh points are published you can also use `combine` to subscribe to the mesh points to add a custom callback to further process the mesh points.
+Since the edge metrics are published you can also use `combine` to subscribe to the edge metrics to add a custom callback to further process the face landmarks.
 
 ## Device Orientation
 
 We do not recommend landscape support. We recommend removing the "Landscape Left," "Landscape Right," and "Portrait Upside Down" modes from your supported interface orientations.
 
-## Troubleshooting
+## Generating Documentation
+
+Documentation is available online at [https://docs.physiology.presagetech.com/swift/documentation/smartspectraswiftsdk/](https://docs.physiology.presagetech.com/swift/documentation/smartspectraswiftsdk/).
+
+You can also build and browse documentation locally within Xcode using the built-in documentation library. To generate and view API documentation:
+
+1. Open your project in Xcode
+2. Navigate to **Product** → **Build Documentation**
+3. Once built, the documentation will be available in Xcode's documentation viewer for easy browsing
+
+This provides a convenient way to access SDK documentation directly within your development environment.
+
+## Bugs & Troubleshooting
 
 For additional support, contact <[support@presagetech.com](mailto:support@presagetech.com)> or submit a [Github Issue](https://github.com/Presage-Security/SmartSpectra/issues)
-
-## Known Bugs
-
-- Currently, there are no known bugs. If you encounter an issue, please contact support or report it.

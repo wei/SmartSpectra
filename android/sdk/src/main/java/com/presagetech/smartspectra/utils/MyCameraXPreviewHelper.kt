@@ -27,7 +27,7 @@ import java.util.concurrent.ExecutorService
 
 
 @ExperimentalCamera2Interop
-class MyCameraXPreviewHelper {
+internal class MyCameraXPreviewHelper {
     fun interface OnCameraImageProxyListener {
         fun onImageProxy(image: ImageProxy)
     }
@@ -40,6 +40,14 @@ class MyCameraXPreviewHelper {
     private var cameraProvider: ProcessCameraProvider? = null
     private lateinit var backgroundExecutor: ExecutorService
 
+    /**
+     * Starts the camera preview and analysis pipelines.
+     *
+     * @param context The application context.
+     * @param lifecycleOwner Lifecycle owner for binding use cases.
+     * @param previewView The view that renders the camera preview.
+     * @param backgroundExecutor Executor used for image analysis callbacks.
+     */
     fun startCamera(
         context: Context,
         lifecycleOwner: LifecycleOwner,
@@ -61,6 +69,10 @@ class MyCameraXPreviewHelper {
         Timber.d("Started camera in the camera preview helper")
     }
 
+    /**
+     * Called once the [ProcessCameraProvider] is ready. Sets up the preview and
+     * analysis use cases and binds them to the lifecycle.
+     */
     private fun cameraProviderOpened(
         context: Context,
         cameraProvider: ProcessCameraProvider,
@@ -128,6 +140,9 @@ class MyCameraXPreviewHelper {
         }
     }
 
+    /**
+     * Unbinds all camera use cases and stops frame delivery.
+     */
     fun stopCamera() {
         cameraProvider?.unbindAll()
     }
@@ -171,6 +186,7 @@ class MyCameraXPreviewHelper {
         // Target frame and view resolution size in landscape.
         val TARGET_SIZE = Size(720,1280)
 
+        /** Returns the [CameraCharacteristics] for the requested lens. */
         private fun getCameraCharacteristics(
             context: Context,
             lensFacing: Int
@@ -198,6 +214,7 @@ class MyCameraXPreviewHelper {
             return null
         }
 
+        /** Checks if the preview resolution is available for the device. */
         private fun isTargetResolutionSupported(
             cameraCharacteristics: CameraCharacteristics,
             targetSize: Size

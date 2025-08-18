@@ -61,8 +61,13 @@ install(FILES
         DESTINATION ${${PROJECT_NAME}_INSTALL_CMAKE_DIR}
 )
 
+# === Install version header file
+install(FILES
+        ${SMART_SPECTRA_VERSION_HEADER_PATH}
+        DESTINATION ${${PROJECT_NAME}_INSTALL_INCLUDE_DIR}/smartspectra
+)
+
 install(FILES
         ${PROJECT_SOURCE_DIR}/cmake/modules/FindV4L.cmake
         DESTINATION ${${PROJECT_NAME}_INSTALL_CMAKE_DIR}/modules
 )
-

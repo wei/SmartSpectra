@@ -8,6 +8,7 @@
 import Foundation
 
 extension Encodable {
+    /// Encodes the object as a pretty-printed JSON string.
     func toJSONString() -> String? {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
@@ -22,6 +23,7 @@ extension Encodable {
     }
 }
 extension Data {
+    /// Attempts to pretty-print the data as JSON.
     func formatAsReadableString() -> String? {
         do {
             let jsonObject = try JSONSerialization.jsonObject(with: self, options: [])

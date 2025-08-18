@@ -22,6 +22,13 @@ import timber.log.Timber
 import kotlin.math.roundToInt
 
 
+/**
+ * A custom view that presents the SmartSpectra checkup button and info actions.
+ *
+ * When pressed the view launches [SmartSpectraActivity] to perform a
+ * measurement. It also exposes a bottom sheet with links to the SDK
+ * documentation and tutorials.
+ */
 class SmartSpectraButton(context: Context, attrs: AttributeSet?) : LinearLayout(context, attrs) {
     private val BASE_URL = "https://api.physiology.presagetech.com"
     private val linksMap = mapOf(
@@ -90,6 +97,13 @@ class SmartSpectraButton(context: Context, attrs: AttributeSet?) : LinearLayout(
         dialog
     }
 
+    /**
+     * Displays the onboarding tutorial the first time the button is pressed.
+     *
+     * After the tutorial completes, the provided [onComplete] callback will be
+     * invoked. If the tutorial has already been shown the callback is invoked
+     * immediately.
+     */
     private fun showTutorialIfNecessary(onComplete: (() -> Unit)? = null) {
         if (!onboardingTutorialHasBeenShown) {
             openOnboardingTutorial(context) {
@@ -100,6 +114,11 @@ class SmartSpectraButton(context: Context, attrs: AttributeSet?) : LinearLayout(
         }
     }
 
+    /**
+     * Shows the Terms of Service and Privacy Policy dialogs if the user has not
+     * yet agreed to them. When both agreements are confirmed the
+     * [onComplete] callback is executed.
+     */
     private fun showAgreementsIfNecessary(onComplete: (() -> Unit)? = null) {
         if(!agreedToTermsOfService) {
             //show terms of service
@@ -119,6 +138,11 @@ class SmartSpectraButton(context: Context, attrs: AttributeSet?) : LinearLayout(
         }
     }
 
+    /**
+     * Handles clicks on the measurement button and launches
+     * [SmartSpectraActivity] once prerequisites such as tutorial and
+     * agreements have been completed.
+     */
     private fun onStartClicked(view: View) {
         // TODO: Check if api key is set, this throws an error if it's not
         smartSpectraSdk.getApiKey()
@@ -144,6 +168,9 @@ class SmartSpectraButton(context: Context, attrs: AttributeSet?) : LinearLayout(
         }
     }
 
+    /**
+     * Launches the onboarding tutorial activity and marks it as completed.
+     */
     private fun openOnboardingTutorial(context: Context, callback: (() -> Unit)? = null) {
         val intent = Intent(context, OnboardingTutorialActivity::class.java)
         context.startActivity(intent)
@@ -152,12 +179,19 @@ class SmartSpectraButton(context: Context, attrs: AttributeSet?) : LinearLayout(
         callback?.invoke()
     }
 
+    /**
+     * Opens the supplied URL in an external browser.
+     */
     private fun openInWebView(url: String) {
         val uri = Uri.parse(url)
         val intent = Intent(Intent.ACTION_VIEW, uri)
         context.startActivity(intent)
     }
 
+    /**
+     * Displays the Terms of Service dialog. Invokes [callback] with the user's
+     * choice.
+     */
     private fun showTermsOfService(context: Context, callback: ((Boolean) -> Unit)? = null) {
         showEulaDialog(context, linksMap[R.id.txt_terms_of_service].toString()) { agreed ->
             agreedToTermsOfService = agreed
@@ -170,6 +204,10 @@ class SmartSpectraButton(context: Context, attrs: AttributeSet?) : LinearLayout(
         }
     }
 
+    /**
+     * Displays the Privacy Policy dialog. Invokes [callback] with the user's
+     * choice.
+     */
     private fun showPrivacyPolicy(context: Context, callback: ((Boolean) -> Unit)? = null) {
         showEulaDialog(context, linksMap[R.id.txt_privacy_policy].toString()) { agreed ->
             agreedToPrivacyPolicy = agreed
@@ -182,6 +220,10 @@ class SmartSpectraButton(context: Context, attrs: AttributeSet?) : LinearLayout(
         }
     }
 
+    /**
+     * Generic helper for showing EULA style dialogs that load the agreement
+     * from a URL.
+     */
     private fun showEulaDialog(context: Context, url: String, callback: ((Boolean) -> Unit)? = null) {
         val dialog = Dialog(context, R.style.FullScreenDialogTheme)
         val view = LayoutInflater.from(context).inflate(R.layout.dialog_eula, null)
@@ -213,6 +255,10 @@ class SmartSpectraButton(context: Context, attrs: AttributeSet?) : LinearLayout(
         super.onMeasure(widthMeasureSpec, heightSpec)
     }
 
+    /**
+     * Converts the provided density independent pixel value to a physical
+     * pixel value based on the current screen density.
+     */
     private fun dpToPx(dp: Int): Int {
         val density = context.resources.displayMetrics.density
         return (dp * density).roundToInt()

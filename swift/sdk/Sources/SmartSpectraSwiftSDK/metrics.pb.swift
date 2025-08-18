@@ -70,6 +70,24 @@ public struct Presage_Physiology_MeasurementWithConfidence {
   public init() {}
 }
 
+public struct Presage_Physiology_MicroExpression {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var time: Float = 0
+
+  public var expression: String = String()
+
+  public var stable: Bool = false
+
+  public var confidence: Float = 0
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 public struct Presage_Physiology_Strict {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
@@ -107,6 +125,18 @@ public struct Presage_Physiology_Pulse {
   public init() {}
 
   fileprivate var _strict: Presage_Physiology_Strict? = nil
+}
+
+public struct Presage_Physiology_Trace {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var sample: [Presage_Physiology_Measurement] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
 }
 
 public struct Presage_Physiology_Breathing {
@@ -169,6 +199,8 @@ public struct Presage_Physiology_Landmarks {
 
   public var stable: Bool = false
 
+  public var reset: Bool = false
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -185,6 +217,8 @@ public struct Presage_Physiology_Face {
 
   public var landmarks: [Presage_Physiology_Landmarks] = []
 
+  public var microExpression: [Presage_Physiology_MicroExpression] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -200,6 +234,12 @@ public struct Presage_Physiology_Metadata {
   public var uploadTimestamp: String = String()
 
   public var apiVersion: String = String()
+
+  public var sentAtS: Double = 0
+
+  public var frameTimestamp: Int64 = 0
+
+  public var frameCount: Int32 = 0
 
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -263,18 +303,100 @@ public struct Presage_Physiology_MetricsBuffer {
   fileprivate var _storage = _StorageClass.defaultInstance
 }
 
+public struct Presage_Physiology_MicroMotion {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var glutes: [Presage_Physiology_Measurement] = []
+
+  public var knees: [Presage_Physiology_Measurement] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Presage_Physiology_Eda {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var trace: [Presage_Physiology_Measurement] = []
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct Presage_Physiology_Metrics {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var breathing: Presage_Physiology_Breathing {
+    get {return _breathing ?? Presage_Physiology_Breathing()}
+    set {_breathing = newValue}
+  }
+  /// Returns true if `breathing` has been explicitly set.
+  public var hasBreathing: Bool {return self._breathing != nil}
+  /// Clears the value of `breathing`. Subsequent reads from it will return its default value.
+  public mutating func clearBreathing() {self._breathing = nil}
+
+  public var micromotion: Presage_Physiology_MicroMotion {
+    get {return _micromotion ?? Presage_Physiology_MicroMotion()}
+    set {_micromotion = newValue}
+  }
+  /// Returns true if `micromotion` has been explicitly set.
+  public var hasMicromotion: Bool {return self._micromotion != nil}
+  /// Clears the value of `micromotion`. Subsequent reads from it will return its default value.
+  public mutating func clearMicromotion() {self._micromotion = nil}
+
+  public var eda: Presage_Physiology_Eda {
+    get {return _eda ?? Presage_Physiology_Eda()}
+    set {_eda = newValue}
+  }
+  /// Returns true if `eda` has been explicitly set.
+  public var hasEda: Bool {return self._eda != nil}
+  /// Clears the value of `eda`. Subsequent reads from it will return its default value.
+  public mutating func clearEda() {self._eda = nil}
+
+  public var face: Presage_Physiology_Face {
+    get {return _face ?? Presage_Physiology_Face()}
+    set {_face = newValue}
+  }
+  /// Returns true if `face` has been explicitly set.
+  public var hasFace: Bool {return self._face != nil}
+  /// Clears the value of `face`. Subsequent reads from it will return its default value.
+  public mutating func clearFace() {self._face = nil}
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+
+  fileprivate var _breathing: Presage_Physiology_Breathing? = nil
+  fileprivate var _micromotion: Presage_Physiology_MicroMotion? = nil
+  fileprivate var _eda: Presage_Physiology_Eda? = nil
+  fileprivate var _face: Presage_Physiology_Face? = nil
+}
+
 #if swift(>=5.5) && canImport(_Concurrency)
 extension Presage_Physiology_Measurement: @unchecked Sendable {}
 extension Presage_Physiology_DetectionStatus: @unchecked Sendable {}
 extension Presage_Physiology_MeasurementWithConfidence: @unchecked Sendable {}
+extension Presage_Physiology_MicroExpression: @unchecked Sendable {}
 extension Presage_Physiology_Strict: @unchecked Sendable {}
 extension Presage_Physiology_Pulse: @unchecked Sendable {}
+extension Presage_Physiology_Trace: @unchecked Sendable {}
 extension Presage_Physiology_Breathing: @unchecked Sendable {}
 extension Presage_Physiology_BloodPressure: @unchecked Sendable {}
 extension Presage_Physiology_Landmarks: @unchecked Sendable {}
 extension Presage_Physiology_Face: @unchecked Sendable {}
 extension Presage_Physiology_Metadata: @unchecked Sendable {}
 extension Presage_Physiology_MetricsBuffer: @unchecked Sendable {}
+extension Presage_Physiology_MicroMotion: @unchecked Sendable {}
+extension Presage_Physiology_Eda: @unchecked Sendable {}
+extension Presage_Physiology_Metrics: @unchecked Sendable {}
 #endif  // swift(>=5.5) && canImport(_Concurrency)
 
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
@@ -419,6 +541,56 @@ extension Presage_Physiology_MeasurementWithConfidence: SwiftProtobuf.Message, S
   }
 }
 
+extension Presage_Physiology_MicroExpression: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MicroExpression"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "time"),
+    2: .same(proto: "expression"),
+    3: .same(proto: "stable"),
+    4: .same(proto: "confidence"),
+  ]
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularFloatField(value: &self.time) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.expression) }()
+      case 3: try { try decoder.decodeSingularBoolField(value: &self.stable) }()
+      case 4: try { try decoder.decodeSingularFloatField(value: &self.confidence) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if self.time != 0 {
+      try visitor.visitSingularFloatField(value: self.time, fieldNumber: 1)
+    }
+    if !self.expression.isEmpty {
+      try visitor.visitSingularStringField(value: self.expression, fieldNumber: 2)
+    }
+    if self.stable != false {
+      try visitor.visitSingularBoolField(value: self.stable, fieldNumber: 3)
+    }
+    if self.confidence != 0 {
+      try visitor.visitSingularFloatField(value: self.confidence, fieldNumber: 4)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Presage_Physiology_MicroExpression, rhs: Presage_Physiology_MicroExpression) -> Bool {
+    if lhs.time != rhs.time {return false}
+    if lhs.expression != rhs.expression {return false}
+    if lhs.stable != rhs.stable {return false}
+    if lhs.confidence != rhs.confidence {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
 extension Presage_Physiology_Strict: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Strict"
   public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
@@ -500,6 +672,38 @@ extension Presage_Physiology_Pulse: SwiftProtobuf.Message, SwiftProtobuf._Messag
     if lhs.trace != rhs.trace {return false}
     if lhs.pulseRespirationQuotient != rhs.pulseRespirationQuotient {return false}
     if lhs._strict != rhs._strict {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Presage_Physiology_Trace: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".Trace"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "sample"),
+  ]
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.sample) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.sample.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.sample, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Presage_Physiology_Trace, rhs: Presage_Physiology_Trace) -> Bool {
+    if lhs.sample != rhs.sample {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -627,6 +831,7 @@ extension Presage_Physiology_Landmarks: SwiftProtobuf.Message, SwiftProtobuf._Me
     1: .same(proto: "time"),
     2: .same(proto: "value"),
     3: .same(proto: "stable"),
+    4: .same(proto: "reset"),
   ]
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
@@ -638,6 +843,7 @@ extension Presage_Physiology_Landmarks: SwiftProtobuf.Message, SwiftProtobuf._Me
       case 1: try { try decoder.decodeSingularFloatField(value: &self.time) }()
       case 2: try { try decoder.decodeRepeatedMessageField(value: &self.value) }()
       case 3: try { try decoder.decodeSingularBoolField(value: &self.stable) }()
+      case 4: try { try decoder.decodeSingularBoolField(value: &self.reset) }()
       default: break
       }
     }
@@ -653,6 +859,9 @@ extension Presage_Physiology_Landmarks: SwiftProtobuf.Message, SwiftProtobuf._Me
     if self.stable != false {
       try visitor.visitSingularBoolField(value: self.stable, fieldNumber: 3)
     }
+    if self.reset != false {
+      try visitor.visitSingularBoolField(value: self.reset, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -660,6 +869,7 @@ extension Presage_Physiology_Landmarks: SwiftProtobuf.Message, SwiftProtobuf._Me
     if lhs.time != rhs.time {return false}
     if lhs.value != rhs.value {return false}
     if lhs.stable != rhs.stable {return false}
+    if lhs.reset != rhs.reset {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -671,6 +881,7 @@ extension Presage_Physiology_Face: SwiftProtobuf.Message, SwiftProtobuf._Message
     1: .same(proto: "blinking"),
     2: .same(proto: "talking"),
     3: .same(proto: "landmarks"),
+    4: .standard(proto: "micro_expression"),
   ]
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
@@ -682,6 +893,7 @@ extension Presage_Physiology_Face: SwiftProtobuf.Message, SwiftProtobuf._Message
       case 1: try { try decoder.decodeRepeatedMessageField(value: &self.blinking) }()
       case 2: try { try decoder.decodeRepeatedMessageField(value: &self.talking) }()
       case 3: try { try decoder.decodeRepeatedMessageField(value: &self.landmarks) }()
+      case 4: try { try decoder.decodeRepeatedMessageField(value: &self.microExpression) }()
       default: break
       }
     }
@@ -697,6 +909,9 @@ extension Presage_Physiology_Face: SwiftProtobuf.Message, SwiftProtobuf._Message
     if !self.landmarks.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.landmarks, fieldNumber: 3)
     }
+    if !self.microExpression.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.microExpression, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -704,6 +919,7 @@ extension Presage_Physiology_Face: SwiftProtobuf.Message, SwiftProtobuf._Message
     if lhs.blinking != rhs.blinking {return false}
     if lhs.talking != rhs.talking {return false}
     if lhs.landmarks != rhs.landmarks {return false}
+    if lhs.microExpression != rhs.microExpression {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -715,6 +931,9 @@ extension Presage_Physiology_Metadata: SwiftProtobuf.Message, SwiftProtobuf._Mes
     1: .same(proto: "id"),
     2: .standard(proto: "upload_timestamp"),
     3: .standard(proto: "api_version"),
+    4: .standard(proto: "sent_at_s"),
+    5: .standard(proto: "frame_timestamp"),
+    6: .standard(proto: "frame_count"),
   ]
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
@@ -726,6 +945,9 @@ extension Presage_Physiology_Metadata: SwiftProtobuf.Message, SwiftProtobuf._Mes
       case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.uploadTimestamp) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self.apiVersion) }()
+      case 4: try { try decoder.decodeSingularDoubleField(value: &self.sentAtS) }()
+      case 5: try { try decoder.decodeSingularInt64Field(value: &self.frameTimestamp) }()
+      case 6: try { try decoder.decodeSingularInt32Field(value: &self.frameCount) }()
       default: break
       }
     }
@@ -741,6 +963,15 @@ extension Presage_Physiology_Metadata: SwiftProtobuf.Message, SwiftProtobuf._Mes
     if !self.apiVersion.isEmpty {
       try visitor.visitSingularStringField(value: self.apiVersion, fieldNumber: 3)
     }
+    if self.sentAtS != 0 {
+      try visitor.visitSingularDoubleField(value: self.sentAtS, fieldNumber: 4)
+    }
+    if self.frameTimestamp != 0 {
+      try visitor.visitSingularInt64Field(value: self.frameTimestamp, fieldNumber: 5)
+    }
+    if self.frameCount != 0 {
+      try visitor.visitSingularInt32Field(value: self.frameCount, fieldNumber: 6)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -748,6 +979,9 @@ extension Presage_Physiology_Metadata: SwiftProtobuf.Message, SwiftProtobuf._Mes
     if lhs.id != rhs.id {return false}
     if lhs.uploadTimestamp != rhs.uploadTimestamp {return false}
     if lhs.apiVersion != rhs.apiVersion {return false}
+    if lhs.sentAtS != rhs.sentAtS {return false}
+    if lhs.frameTimestamp != rhs.frameTimestamp {return false}
+    if lhs.frameCount != rhs.frameCount {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -848,6 +1082,130 @@ extension Presage_Physiology_MetricsBuffer: SwiftProtobuf.Message, SwiftProtobuf
       }
       if !storagesAreEqual {return false}
     }
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Presage_Physiology_MicroMotion: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".MicroMotion"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "glutes"),
+    2: .same(proto: "knees"),
+  ]
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.glutes) }()
+      case 2: try { try decoder.decodeRepeatedMessageField(value: &self.knees) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.glutes.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.glutes, fieldNumber: 1)
+    }
+    if !self.knees.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.knees, fieldNumber: 2)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Presage_Physiology_MicroMotion, rhs: Presage_Physiology_MicroMotion) -> Bool {
+    if lhs.glutes != rhs.glutes {return false}
+    if lhs.knees != rhs.knees {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Presage_Physiology_Eda: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".Eda"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "trace"),
+  ]
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeRepeatedMessageField(value: &self.trace) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.trace.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.trace, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Presage_Physiology_Eda, rhs: Presage_Physiology_Eda) -> Bool {
+    if lhs.trace != rhs.trace {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension Presage_Physiology_Metrics: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".Metrics"
+  public static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
+    1: .same(proto: "breathing"),
+    2: .same(proto: "micromotion"),
+    3: .same(proto: "eda"),
+    4: .same(proto: "face"),
+  ]
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._breathing) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._micromotion) }()
+      case 3: try { try decoder.decodeSingularMessageField(value: &self._eda) }()
+      case 4: try { try decoder.decodeSingularMessageField(value: &self._face) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._breathing {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._micromotion {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    try { if let v = self._eda {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 3)
+    } }()
+    try { if let v = self._face {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: Presage_Physiology_Metrics, rhs: Presage_Physiology_Metrics) -> Bool {
+    if lhs._breathing != rhs._breathing {return false}
+    if lhs._micromotion != rhs._micromotion {return false}
+    if lhs._eda != rhs._eda {return false}
+    if lhs._face != rhs._face {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

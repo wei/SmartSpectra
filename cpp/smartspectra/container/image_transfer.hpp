@@ -31,6 +31,9 @@
 
 namespace presage::smartspectra::container::image_transfer {
 
+/**
+ * @brief Send an image frame into the MediaPipe graph.
+ */
 absl::Status FeedFrameToGraph(
     std::unique_ptr<mediapipe::ImageFrame> input_frame,
     mediapipe::CalculatorGraph& graph,
@@ -38,6 +41,9 @@ absl::Status FeedFrameToGraph(
     const char* video_stream
 );
 
+/**
+ * @brief Device-aware version of FeedFrameToGraph.
+ */
 template<presage::platform_independence::DeviceType TDeviceType>
 absl::Status FeedFrameToGraph(
     std::unique_ptr<mediapipe::ImageFrame> input_frame,
@@ -47,11 +53,15 @@ absl::Status FeedFrameToGraph(
     const char* video_stream
 );
 
+/** Retrieve a frame from an output packet and convert to RGB. */
 absl::Status GetFrameFromPacket(
     cv::Mat& output_frame_rgb,
     const mediapipe::Packet& output_video_packet
 );
 
+/**
+ * @brief Device-aware version of GetFrameFromPacket.
+ */
 template<presage::platform_independence::DeviceType TDeviceType>
 absl::Status GetFrameFromPacket(
     cv::Mat& output_frame_rgb,

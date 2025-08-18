@@ -14,16 +14,14 @@
 #include <mediapipe/framework/port/opencv_core_inc.h>
 #include <mediapipe/framework/port/opencv_imgcodecs_inc.h>
 // === local includes (if any) ===
-#include <smartspectra/video_source/interface.hpp>
+#include <smartspectra/video_source/video_source.hpp>
 
 
 namespace presage::smartspectra::video_source::file_stream {
 
-class FileStreamVideoSource : public VideoSourceInterface {
+class FileStreamVideoSource : public VideoSource {
 public:
     absl::Status Initialize(const VideoSourceSettings& settings);
-
-    FileStreamVideoSource& operator>>(cv::Mat& frame) override;
 
     [[nodiscard]] bool SupportsExactFrameTimestamp() const override;
 
@@ -31,6 +29,8 @@ public:
 
     int GetWidth() override;
     int GetHeight() override;
+protected:
+    void ProducePreTransformFrame(cv::Mat& frame) override;
 private:
     const int64_t kTimestampNotYetSet = -1;
 

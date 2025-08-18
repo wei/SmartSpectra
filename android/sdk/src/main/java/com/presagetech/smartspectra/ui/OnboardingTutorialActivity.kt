@@ -8,7 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.presagetech.smartspectra.R
 import com.presagetech.smartspectra.utils.PreferencesUtils
 
-class OnboardingTutorialActivity : AppCompatActivity() {
+internal class OnboardingTutorialActivity : AppCompatActivity() {
 
     private lateinit var tutorialImageView: ImageView
     private lateinit var tutorialDescriptionTextView: TextView
@@ -60,6 +60,10 @@ class OnboardingTutorialActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Creates and attaches the progress dots shown at the bottom of the
+     * tutorial screen.
+     */
     private fun initializeNavigationDots() {
         val dotsLayout = findViewById<LinearLayout>(R.id.navigation_dots)
         navigationDots = arrayOfNulls(tutorialImages.size)
@@ -78,6 +82,10 @@ class OnboardingTutorialActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Updates which progress dot is highlighted based on the current tutorial
+     * [currentPosition].
+     */
     private fun updateNavigationDotColors(currentPosition: Int) {
         // Reset all dots to inactive color
         for (i in navigationDots.indices) {
@@ -87,6 +95,10 @@ class OnboardingTutorialActivity : AppCompatActivity() {
         navigationDots[currentPosition]?.setImageResource(R.drawable.navigation_dot_active)
     }
 
+    /**
+     * Advances the tutorial to the step referenced by [counter] and updates the
+     * UI accordingly.
+     */
     private fun updateTutorialStep() {
         tutorialImageView.setImageResource(tutorialImages[counter])
         tutorialDescriptionTextView.text = descriptions[counter]

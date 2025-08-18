@@ -2,8 +2,11 @@ import Foundation
 import AVFoundation
 import PresagePreprocessing
 
+/// Operating modes for the SDK.
 public enum SmartSpectraMode {
+    /// Perform a single measurement of fixed duration.
     case spot
+    /// Continuously measure until stopped.
     case continuous
 
     // Internal helper to map to PresageMode
@@ -17,15 +20,26 @@ public enum SmartSpectraMode {
     }
 }
 
+/// Shared configuration used by ``SmartSpectraSwiftSDK`` and
+/// ``SmartSpectraVitalsProcessor``.
 internal class SmartSpectraSdkConfig: ObservableObject {
     internal static let shared = SmartSpectraSdkConfig()
+    /// Operating mode for new measurements.
     @Published internal var smartSpectraMode: SmartSpectraMode
+    /// Duration for spot measurements in seconds.
     @Published internal var measurementDuration: Double
+    /// API key used when OAuth is not configured.
     internal var apiKey: String?
+    /// Display FPS overlay when true.
     internal var showFps: Bool = false
+    /// Seconds to wait before capturing begins.
     internal var recordingDelay: Int = 3
+    /// Camera position used for capture.
     internal var cameraPosition: AVCaptureDevice.Position = .front
+    /// Whether to display built-in UI controls in ``SmartSpectraView``.
     internal var showControlsInScreeningView: Bool = true
+    /// Enable generation of UI preview images from camera frames.
+    internal var imageOutputEnabled: Bool = true
 
     // defaults to 30 second spot if configuration is not supplied
     internal init(smartSpectraMode: SmartSpectraMode = .continuous, duration: Double =  30.0) {

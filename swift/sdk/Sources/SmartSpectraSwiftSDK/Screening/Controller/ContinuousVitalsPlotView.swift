@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+/// Live graph of pulse and breathing traces during continuous mode.
 public struct ContinuousVitalsPlotView: View {
     @ObservedObject var sdk = SmartSpectraSwiftSDK.shared
     @State private var pulseRate: Int = 0
@@ -14,10 +15,12 @@ public struct ContinuousVitalsPlotView: View {
     @State private var pulseTrace: [Presage_Physiology_Measurement] = []
     @State private var breathingTrace: [Presage_Physiology_Measurement] = []
 
+    /// Creates an empty plot view.
     public init() {
 
     }
 
+    /// Plotting UI updated as metrics arrive.
     public var body: some View {
         VStack {
             GeometryReader { geometry in
@@ -70,6 +73,13 @@ public struct ContinuousVitalsPlotView: View {
         }
     }
 
+    /// Draws a simple line plot for the given metric data.
+    /// - Parameters:
+    ///   - data: The measurements to display.
+    ///   - width: Width of the plot area.
+    ///   - height: Height of the plot area.
+    ///   - color: Stroke color for the line.
+    ///   - recentCount: Number of points from the end of the array to display.
     private func plotTrace(data: [Presage_Physiology_Measurement], width: CGFloat, height: CGFloat, color: Color, recentCount: Int) -> some View {
         let displayedData = data.suffix(recentCount)
         return Path { path in

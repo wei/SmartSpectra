@@ -18,11 +18,11 @@
 namespace presage::smartspectra::video_source::file_stream {
 
 
-FileStreamVideoSource& FileStreamVideoSource::operator>>(cv::Mat& frame) {
+void FileStreamVideoSource::ProducePreTransformFrame(cv::Mat& frame) {
     if (this->loop) {
         if (std::filesystem::exists(this->end_of_stream_path)) {
             frame = cv::Mat();
-            return *this;
+            return;
         }
         frame = cv::imread(current_frame_data->second.string(), cv::IMREAD_UNCHANGED);
         auto next_frame_data = std::next(current_frame_data);
@@ -93,7 +93,6 @@ FileStreamVideoSource& FileStreamVideoSource::operator>>(cv::Mat& frame) {
             }
         }
     }
-    return *this;
 }
 
 absl::StatusOr<std::regex> FileStreamVideoSource::BuildFrameFileNameRegex(const std::string& wildcard_filename_mask) {
@@ -121,6 +120,7 @@ int64_t FileStreamVideoSource::GetFrameTimestamp() const {
 }
 
 absl::Status FileStreamVideoSource::Initialize(const VideoSourceSettings& settings) {
+    MP_RETURN_IF_ERROR(VideoSource::Initialize(settings));
     MP_ASSIGN_OR_RETURN(
         this->frame_filename_regex,
         BuildFrameFileNameRegex(std::filesystem::path(settings.file_stream_path).filename())

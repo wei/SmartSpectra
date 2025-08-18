@@ -20,6 +20,7 @@
 
 #pragma once
 // === standard library includes (if any) ===
+#include <optional>
 // === third-party includes (if any) ===
 // === local includes (if any) ===
 #include <smartspectra/video_source/camera/camera.hpp>
@@ -125,9 +126,17 @@ struct GeneralSettings {
     // graph internal settings
     bool scale_input = true;
     bool binary_graph = true;
-    bool enable_phasic_bp = false;
-    bool enable_dense_facemesh_points = true;
+    std::optional<bool> enable_phasic_bp;
+    std::optional<bool> enable_eda;
+    bool enable_dense_facemesh_points = false;
+    std::optional<bool> use_full_range_face_detection;
+    std::optional<bool> use_full_pose_landmarks;
+    std::optional<bool> enable_pose_landmark_segmentation;
+    std::optional<bool> enable_micromotion;
+    // WARNING: enable_edge_metrics doesn't currently apply to spot mode
+    bool enable_edge_metrics = false;
     bool print_graph_contents = false;
+    bool log_transfer_timing_info = false;
     int verbosity_level = 0;
 };
 // endregion ===========================================================================================================

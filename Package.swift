@@ -25,8 +25,11 @@ let package = Package(
             dependencies: [
                 "PresagePreprocessing",
                 .product(name: "SwiftProtobuf", package: "swift-protobuf")
-                ],
-            path: "swift/sdk/Sources/SmartSpectraSwiftSDK"
+            ],
+            path: "swift/sdk/Sources/SmartSpectraSwiftSDK",
+            resources: [
+                .process("Resources/PrivacyInfo.xcprivacy")
+            ]
         ),
         .testTarget(
             name: "SmartSpectraSwiftSDKTests",

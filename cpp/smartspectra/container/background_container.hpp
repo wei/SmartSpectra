@@ -22,8 +22,6 @@
 // === standard library includes (if any) ===
 // === third-party includes (if any) ===
 #include <mediapipe/framework/port/opencv_core_inc.h>
-#include <physiology/modules/messages/status.h>
-#include <physiology/modules/messages/metrics.h>
 // === local includes (if any) ===
 #include "container.hpp"
 
@@ -35,50 +33,50 @@ template<
     settings::OperationMode TOperationMode,
     settings::IntegrationMode TIntegrationMode
 >
+/**
+ * @brief Container for background thread processing.
+ * \ingroup container
+ */
 class BackgroundContainer : public Container<TDeviceType, TOperationMode, TIntegrationMode> {
 public:
     typedef container::settings::Settings<TOperationMode, TIntegrationMode> SettingsType;
     using Base = Container<TDeviceType, TOperationMode, TIntegrationMode>;
 
-    // constructor
+    /** Construct a background container with the provided settings. */
     explicit BackgroundContainer(SettingsType settings);
 
+    /** Check if the MediaPipe graph is currently running. */
     bool GraphIsRunning() const;
     bool ContainerIsInitialized() const { return this->initialized; };
 
-
+    /** Initialize the container and prepare the graph. */
     absl::Status Initialize() override;
 
+    /** Start execution of the MediaPipe graph. */
     absl::Status StartGraph();
 
+    /** Block until the graph has finished processing. */
     absl::Status WaitUntilGraphIsIdle();
 
+    /** Toggle recording state within the graph. */
     absl::Status SetRecording(bool on);
 
+    /** Feed a frame into the graph with an explicit timestamp. */
     absl::Status AddFrameWithTimestamp(const cv::Mat& frame_rgb, int64_t frame_timestamp_μs);
 
-    //TODO: move to base class (and remove from foreground container)
-    //TODO: add setters and make protected
-    // if needed, set to a callback that handles preprocessing status changes
-    std::function<absl::Status(physiology::StatusCode)> OnStatusChange =
-        [](physiology::StatusCode status_code){ return absl::OkStatus(); };
-
-    //TODO: add setters and make protected
-    // if needed, set to a callback that handles preprocessing status changes
-    std::function<absl::Status(const physiology::MetricsBuffer&, int64_t input_timestamp)> OnMetricsOutputCallback =
-        [](const physiology::MetricsBuffer&, int64_t input_timestamp){ return absl::OkStatus(); };
-
+    /** Register callback invoked with Bluetooth timestamps from the graph. */
     absl::Status SetOnBluetoothCallback(std::function<absl::Status(double)> on_bluetooth);
 
+    /** Register callback invoked for each output frame from the graph. */
     absl::Status SetOnOutputFrameCallback(std::function<absl::Status(cv::Mat&)> on_output_frame);
 
+    /** Return last observed status code from preprocessing. */
     physiology::StatusCode GetStatusCode() const { return previous_status_code; };
 
+    /** Stop graph execution and clean up resources. */
     absl::Status StopGraph();
 
 private:
-    // state
-    bool graph_started;
     physiology::StatusCode previous_status_code = physiology::StatusCode::PROCESSING_NOT_STARTED;
 };
 

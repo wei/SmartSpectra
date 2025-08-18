@@ -23,9 +23,20 @@
 #include <nlohmann/json.hpp>
 
 namespace presage::smartspectra::container::json_file_io {
+/**
+ * @brief Serialize JSON data to disk with a short description logged.
+ */
 void WriteJsonDataToFile(
     const nlohmann::json& json_data,
     const std::string& output_file_name,
     const std::string& short_data_description
+);
+
+/**
+ * @brief Serialize JSON data to disk without a description.
+ */
+void WriteJsonDataToFile(
+    const nlohmann::json& json_data,
+    const std::string& output_file_name
 );
 } // namespace presage::smartspectra::container::json_file_io

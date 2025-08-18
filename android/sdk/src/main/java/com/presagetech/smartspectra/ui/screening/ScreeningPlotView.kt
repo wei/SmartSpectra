@@ -17,6 +17,10 @@ import com.presagetech.smartspectra.R
 import java.util.Locale
 import kotlin.math.roundToInt
 
+/**
+ * View that renders pulse and breathing plots during continuous measurements.
+ * Use [bindLifecycleOwner] to start observing metrics.
+ */
 class ScreeningPlotView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : LinearLayout(context, attrs, defStyleAttr) {
@@ -49,7 +53,9 @@ class ScreeningPlotView @JvmOverloads constructor(
         setupChart(pulsePlot)
         setupChart(breathingPlot)
     }
-
+    /**
+     * Starts observing metrics from [SmartSpectraSdk] using the provided lifecycle.
+     */
     fun bindLifecycleOwner(lifecycleOwner: LifecycleOwner) {
         // Observe metricsBuffer LiveData
         viewModel.metricsBuffer.observe(lifecycleOwner) { metricsBuffer ->
@@ -63,6 +69,7 @@ class ScreeningPlotView @JvmOverloads constructor(
         }
     }
 
+    /** Configures default styling for each chart. */
     private fun setupChart(chart: LineChart) {
         chart.description.text = ""
         chart.setNoDataText("")
@@ -78,6 +85,10 @@ class ScreeningPlotView @JvmOverloads constructor(
         chart.setDrawGridBackground(false)
     }
 
+    /**
+     * Merges new metric traces into the internal buffers and refreshes the
+     * displayed charts.
+     */
     private fun updateTraces(metricsBuffer: MetricsBuffer) {
         val newPulseEntries = metricsBuffer.pulse.traceList.map { Entry(it.time.toFloat(), it.value) }
         val newBreathingEntries = metricsBuffer.breathing.upperTraceList.map { Entry(it.time.toFloat(), it.value) }
@@ -89,6 +100,10 @@ class ScreeningPlotView @JvmOverloads constructor(
         updateChart(breathingPlot, breathingTraces, Color.BLUE)
     }
 
+    /**
+     * Appends [newEntries] to [existingEntries] ensuring the list never exceeds
+     * [maxSize].
+     */
     private fun mergeData(existingEntries: MutableList<Entry>, newEntries: List<Entry>, maxSize: Int) {
         val firstNewTime = newEntries.firstOrNull()?.x ?: return
         val firstOverlapIndex = existingEntries.indexOfFirst { it.x >= firstNewTime }
@@ -101,6 +116,9 @@ class ScreeningPlotView @JvmOverloads constructor(
         }
     }
 
+    /**
+     * Applies the supplied [entries] to [chart] using the specified line color.
+     */
     private fun updateChart(chart: LineChart, entries: List<Entry>, colorResId: Int) {
         val dataSet = LineDataSet(entries, chart.description.text.toString()).apply {
             lineWidth = 2f

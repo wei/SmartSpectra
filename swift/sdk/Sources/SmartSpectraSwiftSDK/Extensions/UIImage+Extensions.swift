@@ -9,6 +9,8 @@ import Foundation
 import UIKit
 
 extension UIImage {
+    /// Calculates the average brightness of the image.
+    /// - Returns: A value between 0 and 1 where `0` is dark and `1` is bright.
     func averageBrightness() -> CGFloat? {
         guard let cgImage = self.cgImage else {
             return nil

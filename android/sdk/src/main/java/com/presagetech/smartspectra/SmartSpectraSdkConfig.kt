@@ -27,6 +27,10 @@ internal object SmartSpectraSdkConfig {
         }
 
     internal var smartSpectraMode: SmartSpectraMode = SmartSpectraMode.CONTINUOUS
+    internal var enableEdgeMetrics: Boolean = false
+    internal var useFullRangeFaceDetection: Boolean = false
+    internal var useFullLandmarks: Boolean = false
+    internal var enableLandmarkSegmentation: Boolean = false
 
     const val ENABLE_BP = false
     const val MODEL_DIRECTORY = "graph/models"
@@ -37,7 +41,13 @@ internal object SmartSpectraSdkConfig {
     internal val save_roi_image = false
 }
 
+/**
+ * Measurement modes supported by [SmartSpectraSdk].
+ */
 public enum class SmartSpectraMode {
+    /** Single spot measurement mode. */
     SPOT,
+
+    /** Continuous measurement mode. */
     CONTINUOUS
 }

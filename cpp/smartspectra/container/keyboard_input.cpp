@@ -18,9 +18,10 @@ using StatusCode = physiology::StatusCode;
 absl::Status HandleKeyboardInput(
     bool& grab_frames,
     bool& recording,
-    video_source::VideoSourceInterface& _video_source,
+    video_source::VideoSource& v_source,
     const settings::GeneralSettings& settings,
-    StatusCode status_code
+    StatusCode status_code,
+    int64_t timestamp
 ) {
     const int pressed_key = cv::waitKey(settings.interframe_delay_ms);
     if (pressed_key != -1) {
@@ -30,25 +31,30 @@ absl::Status HandleKeyboardInput(
                 grab_frames = false;
                 break;
             case 'e':
-                return _video_source.ToggleAutoExposure();
+                return v_source.ToggleAutoExposure();
             case '-':
-                return _video_source.DecreaseExposure();
+                return v_source.DecreaseExposure();
             case '=':
-                return _video_source.IncreaseExposure();
+                return v_source.IncreaseExposure();
             case 's':
                 if (status_code == StatusCode::OK || status_code == StatusCode::PROCESSING_NOT_STARTED) {
                     recording = !recording;
-                    LOG(INFO) << (recording ? "Recording started." : "Recording stopped.");
+                    LOG(INFO) << (
+                        recording ?
+                        "====== Recording started after timestamp " + std::to_string(timestamp) + ". ======"
+                                  :
+                        "====== Recording stopped after timestamp " + std::to_string(timestamp) + ". ======"
+                    );
                     if (recording) {
                         // lock exposure when recording commences (if it's supported by this video source)
-                        if (settings.video_source.auto_lock && _video_source.SupportsExposureControls()) {
-                            return _video_source.TurnOffAutoExposure();
+                        if (settings.video_source.auto_lock && v_source.SupportsExposureControls()) {
+                            return v_source.TurnOffAutoExposure();
                         }
                     } else {
                         // turn on auto-exposure after recording (if it's supported by this video source)
-                        auto auto_exposure_on_status = _video_source.TurnOnAutoExposure();
-                        if (settings.video_source.auto_lock && _video_source.SupportsExposureControls()) {
-                            return _video_source.TurnOnAutoExposure();
+                        if (settings.video_source.auto_lock && v_source.SupportsExposureControls()) {
+                            auto auto_exposure_on_status = v_source.TurnOnAutoExposure();
+                            return v_source.TurnOnAutoExposure();
                         }
                     }
                 } else {

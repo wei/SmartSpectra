@@ -9,6 +9,9 @@ import com.presage.physiology.proto.MetricsProto.MetricsBuffer
 import timber.log.Timber
 import kotlin.math.roundToInt
 
+/**
+ * View that displays measurement results from [SmartSpectraSdk].
+ */
 class SmartSpectraResultView(
     context: Context,
     attrs: AttributeSet?
@@ -36,6 +39,11 @@ class SmartSpectraResultView(
         }
     }
 
+    /**
+     * Renders the pulse and breathing rate from the provided [metricsBuffer].
+     *
+     * If strict metrics are unavailable a hint is shown to the user.
+     */
     private fun updateResultText(metricsBuffer: MetricsBuffer) {
         val strictPulseRate = metricsBuffer.pulse.strict.value.roundToInt()
         val strictBreathingRate = metricsBuffer.breathing.strict.value.roundToInt()
@@ -53,6 +61,9 @@ class SmartSpectraResultView(
         }
     }
 
+    /**
+     * Displays an error message below the results view on the UI thread.
+     */
     private fun updateErrorText(errorMessage: String) {
         post {
             if (errorMessage.isEmpty()) {

@@ -25,6 +25,7 @@
 // === local includes (if any) ===
 #include "opencv_trace_plotter.hpp"
 #include "opencv_value_indicator.hpp"
+#include "opencv_label.hpp"
 
 
 #pragma once
@@ -59,6 +60,7 @@ private:
     static const int minimal_plot_area_height; // arbitrary / base on visual experimentation
 
     static const int indicator_width;
+    static const int label_width;
 
     const int max_trace_points;
     bool width_sufficient = false;
@@ -69,6 +71,7 @@ private:
     struct MetricsGroup {
         OpenCvTracePlotter trace_plotter;
         OpenCvValueIndicator rate_indicator;
+        OpenCvLabel label;
         presage::physiology::MeasurementWithConfidence rate;
         bool display_rate = true;
         bool rate_is_high_confidence = false;

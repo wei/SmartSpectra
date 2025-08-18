@@ -30,20 +30,29 @@ namespace presage::smartspectra::container {
 namespace poller = output_stream_poller_wrapper;
 
 template<settings::OperationMode TOperationMode>
-class OperationContext{
+/**
+ * @brief Helper for managing polling of operation-specific graph streams.
+ */
+class OperationContext {
 public:
     explicit OperationContext(const settings::OperationSettings<settings::OperationMode::Continuous>& settings) {};
     void Reset(){};
+    /** Initialize pollers required for the given operation mode. */
     absl::Status InitializePollers(mediapipe::CalculatorGraph& graph);
+    /** Poll graph output streams and update internal state. */
     absl::Status QueryPollers(bool& operation_state_changed, bool verbose);
 };
 
 template<>
 class OperationContext<settings::OperationMode::Spot> {
 public:
+    /** Create a context for spot mode operation. */
     explicit OperationContext(const settings::OperationSettings<settings::OperationMode::Spot>& operation_settings);
+    /** Reset internal state to the beginning of a spot run. */
     void Reset();
+    /** Initialize pollers required for spot mode. */
     absl::Status InitializePollers(mediapipe::CalculatorGraph& graph);
+    /** Poll spot specific streams and update state. */
     absl::Status QueryPollers(bool& operation_state_changed, bool verbose);
 private:
     double time_left_s;

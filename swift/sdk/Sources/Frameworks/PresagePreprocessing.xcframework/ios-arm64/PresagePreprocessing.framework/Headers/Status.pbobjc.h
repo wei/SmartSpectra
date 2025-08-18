@@ -47,6 +47,7 @@ typedef GPB_ENUM(StatusCode) {
   StatusCode_ImageTooBright = 6,
   StatusCode_ChestTooFarOrNotEnoughShowing = 7,
   StatusCode_ProcessingNotStarted = 8,
+  StatusCode_Unauthorized = 9,
 };
 
 GPBEnumDescriptor *StatusCode_EnumDescriptor(void);

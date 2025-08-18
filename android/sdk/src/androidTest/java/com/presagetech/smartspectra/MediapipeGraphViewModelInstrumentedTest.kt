@@ -79,7 +79,13 @@ class MediapipeGraphViewModelInstrumentedTest {
         SmartSpectraSdkConfig.smartSpectraMode = SmartSpectraMode.CONTINUOUS
         context = ApplicationProvider.getApplicationContext()
         smartSpectraSdk = SmartSpectraSdk.getInstance()
-        smartSpectraSdk.setApiKey("YOUR_API_KEY")
+        
+        // Get API key from instrumentation arguments
+        val apiKey = InstrumentationRegistry.getArguments().getString("physiologyApiKey")
+        assertNotNull("PHYSIOLOGY_API_KEY must be set in environment", apiKey)
+        assertFalse("PHYSIOLOGY_API_KEY cannot be empty", apiKey.isNullOrEmpty())
+        smartSpectraSdk.setApiKey(apiKey!!)
+        
         viewModel = MediapipeGraphViewModel.getInstance(context)
         assertNotNull(viewModel)
     }
@@ -174,7 +180,7 @@ class MediapipeGraphViewModelInstrumentedTest {
     fun testProcessVideoFramesAsyncCapture() {
         // make sure to execute run_android_tests.sh if the video file is not found
         // comment out the file cleanup if you are running from android studio but make sure to manually delete the file afterwards
-        val videoFilePath = "/data/local/tmp/STLE_0150_logi_mjpeg.avi"
+        val videoFilePath = "/data/local/tmp/STLW_0261_econ_cropped_s66_d32_mjpeg.avi"
         val videoFile = File(videoFilePath)
         if (!videoFile.exists()) {
             throw FileNotFoundException("Video file not found at $videoFilePath. Make sure to execute run_android_tests.sh after connecting your phone to android studio")

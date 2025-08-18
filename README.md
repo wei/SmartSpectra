@@ -5,7 +5,6 @@ This repository hosts SmartSpectra SDK from PresageTech for measuring vitals suc
 ## Table of Contents
 
 - [SmartSpectra SDK](#smartspectra-sdk)
-  - [Table of Contents](#table-of-contents)
   - [Getting Started](#getting-started)
   - [Features](#features)
   - [Authentication](#authentication)
@@ -13,8 +12,7 @@ This repository hosts SmartSpectra SDK from PresageTech for measuring vitals suc
     - [Android](#android)
     - [iOS](#ios)
     - [Mac/Linux](#maclinux)
-  - [Troubleshooting](#troubleshooting)
-  - [Known Bugs](#known-bugs)
+  - [Bugs & Troubleshooting](#bugs--troubleshooting)
 
 ## Getting Started
 
@@ -22,15 +20,30 @@ To get started, follow the instructions for one of our currently supported platf
 
 ## Features
 
-- Measure vitals such as pulse and breathing using a camera.
-- Support for multiple platforms: Android, iOS, and C++ for Mac/Linux.
-- Easy integration with detailed platform-specific guides.
-- API key and Oauth authentication support.
-- Supports headless mode in C++ and iOS (Android support coming soon).
+- **Cardiac Waveform**  
+  Real-time pulse pleth waveform supporting calculation of pulse rate and heart rate variability.
+
+- **Breathing Waveform**  
+  Real-time breathing waveform supporting biofeedback, breathing rate, inhale/exhale ratio, breathing amplitude, apnea detection, and respiratory line length.
+
+- **Myofacial Analysis**  
+  Supporting face-point analysis, iris tracking, blinking detection, and talking detection.
+
+- **Relative Blood Pressure Waveform**  
+  Relative blood pressure waveform (Contact support@presagetech.com for access)
+
+- **Integrated Quality Control**  
+  Confidence and stability metrics providing insight into the confidence in the signal. User feedback on imaging conditions to support successful use.
+
+- **Camera Selection**  
+  Front or rear facing camera selection on iOS or Android and specification of camera input for applications using the C++ SDK.
+
+- **Continuous or Spot Measurement**  
+  Options for continuous measurements or variable time window spot measurements to support varied use cases.
 
 ## Authentication
 
-You can obtain an API key from PresageTech's developer portal (<https://physiology.presagetech.com/>). We also support Oauth authentication for iOS and Android. Refer to the respective platform's README for more details.
+- We support API key authentication for CPP, iOS and Android. We also support Oauth authentication for iOS and Android. For detailed instructions on how to setup Authentication, refer to the dedicated [Authentication Docs](docs/authentication.md)
 
 ## Platform-Specific Guides
 
@@ -58,10 +71,8 @@ For C++ integration on Mac/Linux, refer to the [C++ README](cpp/README.md). The 
 - Installation and build instructions.
 - Example applications and troubleshooting tips.
 
-## Troubleshooting
+## Bugs & Troubleshooting
 
 For additional support, contact <support@presagetech.com> or [submit a GitHub issue](https://github.com/Presage-Security/SmartSpectra/issues).
 
-## Known Bugs
 
-- Currently, there are no known bugs. If you encounter an issue, please contact support or report it.

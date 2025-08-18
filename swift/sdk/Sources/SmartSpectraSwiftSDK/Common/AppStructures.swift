@@ -8,14 +8,14 @@
 import Foundation
 
 
-public struct Model {
+internal struct Model {
     public struct Option {
         public struct Button {
             //Empty initialize
         }
     }
 }
-public struct ViewController {
+internal struct ViewController {
     public struct Screening {
         //Empty initialize
     }
@@ -32,10 +32,10 @@ public struct ViewController {
 struct ViewModel {
     //Empty initialize
 }
-public struct Common {
+internal struct Common {
     //Empty initialize
 }
-public struct Base {
+internal struct Base {
     //Empty initialize
 }
 

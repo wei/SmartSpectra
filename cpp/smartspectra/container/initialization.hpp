@@ -39,6 +39,9 @@ template<
     settings::IntegrationMode TIntegrationMode,
     bool TLog = true
 >
+/**
+ * @brief Load and initialize a MediaPipe graph.
+ */
 absl::Status InitializeGraph(
     mediapipe::CalculatorGraph& graph,
     const std::string& graph_file_path,
@@ -46,9 +49,15 @@ absl::Status InitializeGraph(
     bool binary_graph
 );
 
+/**
+ * @brief Initialize device-specific compute context.
+ */
 template<platform_independence::DeviceType TDeviceType, bool TLog = true>
 absl::Status InitializeComputingDevice(mediapipe::CalculatorGraph& graph, platform_independence::DeviceContext<TDeviceType>& device_context);
 
+/**
+ * @brief Prepare an output video sink.
+ */
 template<platform_independence::DeviceType TDeviceType, bool TLog = true>
 absl::Status InitializeVideoSink(
     cv::VideoWriter& stream_writer,
@@ -58,6 +67,9 @@ absl::Status InitializeVideoSink(
     settings::VideoSinkMode video_sink_mode
 );
 
+/**
+ * @brief Setup optional GUI components used by the foreground container.
+ */
 template<bool TLog = true>
 absl::Status InitializeGui(const settings::GeneralSettings& settings, const std::string& window_name);
 

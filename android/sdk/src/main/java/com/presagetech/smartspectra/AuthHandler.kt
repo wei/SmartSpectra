@@ -29,11 +29,15 @@ internal sealed class AuthResult {
 internal class AuthHandler private constructor(private val context: Context, private val config: Map<String, Any?>) {
     // Create an instance of a manager.
     private val integrityManager = IntegrityManagerFactory.create(context.applicationContext)
+    private val isOAuthEnabled: Boolean = config["oauth_enabled"] as? Boolean ?: false
 
+    /**
+     * Begins the App Attest flow used for OAuth authentication. Retries are
+     * performed with exponential backoff when errors occur.
+     */
     internal fun startAuthWorkflow() {
-        val isOAuthEnabled = config["oauth_enabled"] as? Boolean ?: false
         // only proceed if oauth is true and auth token is expired already
-        if (!(isOAuthEnabled and isAuthTokenExpired())) return
+        if (!(isOAuthEnabled && isAuthTokenExpired())) return
 
         CoroutineScope(Dispatchers.IO).launch {
             var attempt = 0
@@ -64,10 +68,10 @@ internal class AuthHandler private constructor(private val context: Context, pri
         }
     }
 
+    /** Executes the network challenge/response portion of the auth flow. */
     private suspend fun AuthWorkflow(): AuthResult = withContext(Dispatchers.IO) {
         val clientId = config["client_id"] as? String ?: return@withContext AuthResult.Failure(AuthError.CONFIGURATION_FAILED)
         val sub = config["sub"] as? String ?: return@withContext AuthResult.Failure(AuthError.CONFIGURATION_FAILED)
-        val isOAuthEnabled = config["oauth_enabled"] as? Boolean ?: false
         nativeConfigureAuthClient(clientId, sub, isOAuthEnabled)
 
         // Receive the nonce from the secure server.
@@ -111,6 +115,9 @@ internal class AuthHandler private constructor(private val context: Context, pri
         return@withContext AuthResult.Success(accessToken)
     }
 
+    /**
+     * Requests an authentication challenge from the Presage backend.
+     */
     private fun fetchAuthChallenge(): String? {
         // Fetch the challenge from the server using native method
         var challenge: String? = null
@@ -122,6 +129,10 @@ internal class AuthHandler private constructor(private val context: Context, pri
         return challenge
     }
 
+    /**
+     * Sends the integrity token response back to the backend and returns an
+     * access token if successful.
+     */
     private fun respondToAuthChallenge(challengeResponse: String, packageName: String): String? {
         // Send the attestation object to the server and get the auth token using native method
         var accessToken: String? = null
@@ -133,8 +144,14 @@ internal class AuthHandler private constructor(private val context: Context, pri
         return accessToken
     }
 
+    /** Returns true if the stored auth token has expired. */
     internal fun isAuthTokenExpired(): Boolean {
         return nativeIsAuthTokenExpired()
+    }
+
+    /** Indicates whether OAuth authentication is active. */
+    internal fun isOAuthEnabled(): Boolean {
+        return isOAuthEnabled
     }
 
     private external fun nativeFetchAuthChallenge(): String
@@ -146,6 +163,9 @@ internal class AuthHandler private constructor(private val context: Context, pri
         @Volatile
         private var INSTANCE: AuthHandler? = null
 
+        /**
+         * Creates the singleton [AuthHandler] using the provided configuration.
+         */
         fun initialize(context: Context, config: Map<String, Any?>) {
             synchronized(this) {
                 if (INSTANCE == null) {
@@ -154,6 +174,7 @@ internal class AuthHandler private constructor(private val context: Context, pri
             }
         }
 
+        /** Returns the previously [initialize]d instance. */
         fun getInstance(): AuthHandler =
             INSTANCE ?: throw IllegalStateException("AuthHandler is not initialized. Call initialize() first.")
     }

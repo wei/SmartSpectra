@@ -12,7 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import com.presagetech.smartspectra.R
 
-class PermissionsRequestFragment: Fragment() {
+internal class PermissionsRequestFragment: Fragment() {
 
     private lateinit var requestButton: View
     private lateinit var settingsButton: View
@@ -48,15 +48,21 @@ class PermissionsRequestFragment: Fragment() {
         return view
     }
 
+    /**
+     * Toggles visibility of the request and settings buttons based on whether
+     * [canRequest] permissions from within the app.
+     */
     private fun toggleButtons(canRequest: Boolean) {
         requestButton.visibility = if (canRequest) View.VISIBLE else View.GONE
         settingsButton.visibility = if (canRequest) View.GONE else View.VISIBLE
     }
 
+    /** Launches the Android camera permission dialog. */
     private fun requestPermissionDialog() {
         requestPermissionLauncher.launch(Manifest.permission.CAMERA)
     }
 
+    /** Opens the system settings screen for this app. */
     private fun openPermissionsSettings() {
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
         val uri = Uri.fromParts("package", requireContext().packageName, null)

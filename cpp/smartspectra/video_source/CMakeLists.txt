@@ -24,12 +24,14 @@ add_library(${LIBRARY_NAME} STATIC)
 add_library(SmartSpectra::VideoInterface ALIAS VideoInterface)
 
 target_sources(${LIBRARY_NAME}
-        PRIVATE interface.cpp resolution_selection_mode.cpp
+        PRIVATE video_source.cpp resolution_selection_mode.cpp input_transform.cpp input_transformer.cpp
         PUBLIC FILE_SET HEADERS FILES
-        interface.hpp
+        video_source.hpp
         settings.hpp
         camera/camera.hpp
         resolution_selection_mode.hpp
+        input_transform.hpp
+        input_transformer.hpp
         BASE_DIRS ${PROJECT_SOURCE_DIR}
 )
 

@@ -7,6 +7,7 @@
 
 import Foundation
 
+/// Helper for printing debug messages only in DEBUG builds.
 struct Logger {
     static func log(_ items: Any..., separator: String = " ", terminator: String = "\n", file: String = #file, line: Int = #line, function: String = #function) {
         #if DEBUG

@@ -54,12 +54,38 @@ static void AddGeneralSidePackets(
     std::map<std::string, mediapipe::Packet>& input_side_packets,
     const settings::GeneralSettings& settings
 ) {
+    if (settings.enable_phasic_bp.has_value()) {
         input_side_packets[pe::graph::input_side_packets::kEnablePhasicBp] =
-                mediapipe::MakePacket<bool>(settings.enable_phasic_bp);
-        input_side_packets[pe::graph::input_side_packets::kEnableDenseFaceMeshPoints] =
-                mediapipe::MakePacket<bool>(settings.enable_dense_facemesh_points);
-        input_side_packets[pe::graph::input_side_packets::kModelDirectory] =
-                mediapipe::MakePacket<std::string>(PHYSIOLOGY_EDGE_MODEL_DIRECTORY);
+                mediapipe::MakePacket<bool>(settings.enable_phasic_bp.value());
+    }
+    if (settings.enable_eda.has_value()) {
+        input_side_packets[pe::graph::input_side_packets::kEnableEda] =
+                mediapipe::MakePacket<bool>(settings.enable_eda.value());
+    }
+    input_side_packets[pe::graph::input_side_packets::kEnableDenseFaceMeshPoints] =
+            mediapipe::MakePacket<bool>(settings.enable_dense_facemesh_points);
+    input_side_packets[pe::graph::input_side_packets::kEnableEdgeMetrics] =
+            mediapipe::MakePacket<bool>(settings.enable_edge_metrics);
+    input_side_packets[pe::graph::input_side_packets::kModelDirectory] =
+            mediapipe::MakePacket<std::string>(PHYSIOLOGY_EDGE_MODEL_DIRECTORY);
+    if (settings.use_full_range_face_detection.has_value()){
+        input_side_packets[pe::graph::input_side_packets::kUseFullRangeFaceDetection] =
+            mediapipe::MakePacket<bool>(settings.use_full_range_face_detection.value());
+    }
+    if (settings.use_full_pose_landmarks.has_value()) {
+        input_side_packets[pe::graph::input_side_packets::kUseFullPoseLandmarks] =
+            mediapipe::MakePacket<bool>(settings.use_full_pose_landmarks.value());
+    }
+    if (settings.enable_pose_landmark_segmentation.has_value()) {
+        input_side_packets[pe::graph::input_side_packets::kEnablePoseLandmarkSegmentation] =
+            mediapipe::MakePacket<bool>(settings.enable_pose_landmark_segmentation.value());
+    }
+    if (settings.enable_micromotion.has_value()){
+        input_side_packets[pe::graph::input_side_packets::kEnableMicromotion] =
+            mediapipe::MakePacket<bool>(settings.enable_micromotion.value());
+    }
+    input_side_packets[pe::graph::input_side_packets::kLogTransferTimingInfo] =
+            mediapipe::MakePacket<bool>(settings.log_transfer_timing_info);
 }
 
 template<settings::OperationMode TOperationMode, settings::IntegrationMode TIntegrationMode, bool TLog>
@@ -286,6 +312,9 @@ absl::Status InitializeVideoSink(
                     cv::CAP_GSTREAMER, 0, output_fps, output_resolution, true
                 );
                 break;
+            default:
+                return absl::InvalidArgumentError(absl::StrCat("Unsupported video sink mode with int code ",
+                                                  static_cast<int>(video_sink_mode)));
         }
         RET_CHECK(stream_writer.isOpened());
     }

@@ -53,8 +53,8 @@ void AppendOverlappingTimeSeries(
             // for cases when source data times are earlier than target data times (e.g. calibration trigger / re-trigger),
             // scroll to first source measurement that occurs after or at the first target measurement
             while (current_source_time < first_target_time && i_source_measurement < source_series.size()) {
-                i_source_measurement++;
                 current_source_time = source_series.Get(i_source_measurement).time();
+                i_source_measurement++;
             }
         }
 
@@ -78,16 +78,16 @@ void AppendOverlappingTimeSeries(
     }
 }
 
-template<typename TMeasurement>
-std::vector<cv::Point2i> ComputeRenderableTimeSeries2(
-    const std::deque<TMeasurement>& trace_measurements,
-
-    float value_scale_factor = 1.0, float time_scale_factor = 1.0, float y_offset = 0.0
-);
-
 void RenderTimeSeries(const std::vector<cv::Point2i>& points, cv::Mat& image, const cv::Scalar& color, int line_width);
 
-void OpenCvTracePlotter::UpdateTrace(const google::protobuf::RepeatedPtrField<physiology::Measurement>& new_values) {
+/**
+ * Update the trace with a range of samples. The range may have overlap with existing values, but must end at or after
+ * the last range that was added this way.
+ * @param new_values the sample range with updated values.
+ */
+void OpenCvTracePlotter::UpdateTraceWithSampleRange(
+    const google::protobuf::RepeatedPtrField<physiology::Measurement>& new_values
+) {
     AppendOverlappingTimeSeries(this->buffer, new_values, this->last_overlap_area_start);
     if (this->buffer.size() > this->max_points) {
         int deleted_point_count = this->buffer.size() - this->max_points;
@@ -95,6 +95,19 @@ void OpenCvTracePlotter::UpdateTrace(const google::protobuf::RepeatedPtrField<ph
         this->buffer.DeleteSubrange(0, deleted_point_count);
         // push back start-check cursor in local buffer
         this->last_overlap_area_start = std::max(0, this->last_overlap_area_start - deleted_point_count);
+    }
+}
+
+/**
+ * Update the trace with a single sample, assuming the new sample follows existing samples in time
+ * @param new_value the new sample
+ */
+void OpenCvTracePlotter::UpdateTraceWithSample(const physiology::Measurement& new_value) {
+    this->buffer.Add()->CopyFrom(new_value);
+    if (this->buffer.size() > this->max_points) {
+        int deleted_point_count = this->buffer.size() - this->max_points;
+        // clear out the oldest points
+        this->buffer.DeleteSubrange(0, deleted_point_count);
     }
 }
 

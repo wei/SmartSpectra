@@ -8,10 +8,13 @@
 import Foundation
 import Security
 
+/// Simple helper for storing the App Attest key identifier in the keychain.
 class KeychainHelper {
     static let shared = KeychainHelper()
     private let keyIdKey = "appAttestKeyId"
 
+    /// Saves the generated key identifier to the keychain.
+    /// - Parameter keyId: Identifier returned from `DCAppAttestService`.
     func saveKeyId(_ keyId: String) throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -27,6 +30,7 @@ class KeychainHelper {
         }
     }
 
+    /// Retrieves a previously stored key identifier from the keychain.
     func retrieveKeyId() throws -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -48,6 +52,7 @@ class KeychainHelper {
         return keyId
     }
 
+    /// Removes the stored key identifier from the keychain.
     func deleteKeyId() throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -60,6 +65,7 @@ class KeychainHelper {
         }
     }
 
+    /// Possible errors when interacting with the keychain.
     enum KeychainError: Error {
         case saveFailed(status: OSStatus)
         case readFailed(status: OSStatus)

@@ -43,9 +43,11 @@ typedef NS_ENUM(NSInteger, PresageServer) {
 - (void)metricsBufferChanged:(PresagePreprocessing *)tracker
                serializedBytes:(NSData *)data;
 
+- (void)edgeMetricsChanged:(PresagePreprocessing *)tracker
+              serializedBytes:(NSData *)data;
+
 - (void)timerChanged:(double)timerValue;
 
-- (void)receiveDenseFacemeshPoints:(NSArray<NSNumber *> *)points;
 
 - (void)handleGraphError:(NSError *)error;
 

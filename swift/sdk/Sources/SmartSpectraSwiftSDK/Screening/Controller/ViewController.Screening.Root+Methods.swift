@@ -152,6 +152,7 @@ extension ViewController.Screening.Root {
     @objc private func recordButtonTapped() {
         if buttonState == .ready {
             // start auth workflow (this re-authenticates if expired)
+            // TODO: might no longer be necessary or convert to use closure before starting countdown
             AuthHandler.shared.startAuthWorkflow()
 
             startCountdownForRecording { [weak self] in
@@ -214,8 +215,9 @@ extension ViewController.Screening.Root {
 
 extension UIViewController {
     var topBarHeight: CGFloat {
-        var top = self.navigationController?.navigationBar.frame.height ?? 0.0
-        top += UIApplication.shared.windows.first?.windowScene?.statusBarManager?.statusBarFrame.height ?? 0
-        return top
+        let navigationBarHeight = self.navigationController?.navigationBar.frame.height ?? 0.0
+        let statusBarHeight = view.safeAreaInsets.top
+
+        return navigationBarHeight + statusBarHeight
     }
 }

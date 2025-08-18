@@ -10,6 +10,10 @@ import AVFoundation
 import CoreImage
 import UIKit
 
+/// Wrapper around `AVCaptureSession` that configures the camera for recording.
+///
+/// This manager locks exposure, focus and white balance during measurements and
+/// provides a shared instance used throughout the SDK.
 class AVCaptureDeviceManager: NSObject {
     internal static let shared = AVCaptureDeviceManager()
     var captureSession: AVCaptureSession!
@@ -26,6 +30,10 @@ class AVCaptureDeviceManager: NSObject {
         setupCamera()
     }
 
+    /// Configures the capture session with the appropriate camera input and photo output.
+    ///
+    /// This method also handles the initial camera permission request when the
+    /// authorization status is `.notDetermined`.
     private func setupCamera() {
         guard AVCaptureDevice.default(for: .video) != nil else {
             return
@@ -84,6 +92,7 @@ class AVCaptureDeviceManager: NSObject {
         }
     }
 
+    /// Locks focus, exposure and white balance to prevent automatic changes during recording.
     internal func lockCameraSettings() {
         guard let device = videoDeviceInput?.device else {
             Logger.log("Error: videoDeviceInput is nil")
@@ -110,6 +119,7 @@ class AVCaptureDeviceManager: NSObject {
         }
     }
 
+    /// Restores default camera behavior after recording completes.
     internal func unlockCameraSettings() {
         guard let device = videoDeviceInput?.device else {
             Logger.log("Error: videoDeviceInput is nil")
@@ -145,6 +155,9 @@ class AVCaptureDeviceManager: NSObject {
 
 extension AVCaptureDeviceManager: AVCaptureVideoDataOutputSampleBufferDelegate { //TODO: evaluate if this is being used
 
+    /// Delegate callback currently used for debugging ambient light levels.
+    /// The frame is converted to a `UIImage` so that its average brightness can
+    /// be printed to the console.
     public func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         // Process the light data here
         guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
@@ -152,9 +165,10 @@ extension AVCaptureDeviceManager: AVCaptureVideoDataOutputSampleBufferDelegate {
         }
 
         let ciImage = CIImage(cvPixelBuffer: imageBuffer)
-        let context = CIContext()
 
-        if let cgImage = context.createCGImage(ciImage, from: ciImage.extent) {
+        SharedCIContext.shared.createCGImage(ciImage, from: ciImage.extent) { cgImage in
+            guard let cgImage = cgImage else { return }
+
             let image = UIImage(cgImage: cgImage)
 
             // Process the image or extract light intensity

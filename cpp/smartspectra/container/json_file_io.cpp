@@ -17,11 +17,18 @@ void WriteJsonDataToFile(
     const std::string& output_file_name,
     const std::string& short_data_description
 ) {
+    WriteJsonDataToFile(json_data, output_file_name);
+    LOG(INFO) << "JSON for " << short_data_description << " written to file: " << output_file_name;
+}
+
+void WriteJsonDataToFile(
+    const nlohmann::json& json_data,
+    const std::string& output_file_name
+) {
     std::string json_as_string = json_data.dump();
     std::ofstream output_file(output_file_name.c_str());
     output_file << json_as_string;
     output_file.close();
-    LOG(INFO) << "JSON for " << short_data_description << " written to file: " << output_file_name;
 }
 
 } // namespace presage::smartspectra::container::json_file_io

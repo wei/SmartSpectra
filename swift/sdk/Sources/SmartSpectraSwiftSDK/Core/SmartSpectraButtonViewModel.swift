@@ -10,7 +10,11 @@ import UIKit
 import Combine
 import SwiftUI
 @available(iOS 15.0, *)
-/// A custom button with predefined appearance and behavior for SmartSpectra SDK.
+/// View model powering the default ``SmartSpectraButtonView``.
+///
+/// This type coordinates presentation of onboarding flows and the screening
+/// page when the user taps the record button. Apps may subclass or replace this
+/// view model to customize the button behavior.
 final class SmartSpectraButtonViewModel: ObservableObject {
     
     internal let sdk = SmartSpectraSwiftSDK.shared
@@ -20,6 +24,12 @@ final class SmartSpectraButtonViewModel: ObservableObject {
         // Empty public initializer
     }
     
+    /// Presents the onboarding tutorial and legal agreements if needed.
+    ///
+    /// This method ensures the walkthrough, terms of service and privacy policy
+    /// have been acknowledged before proceeding.
+    /// - Parameter completion: Optional closure executed after onboarding is
+    ///   complete.
     private func showTutorialAndAgreementIfNecessary(completion: (() -> Void)? = nil) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             let walkthroughShown = UserDefaults.standard.bool(forKey: "WalkthroughShown")
@@ -55,6 +65,9 @@ final class SmartSpectraButtonViewModel: ObservableObject {
     }
 
 
+    /// Presents the tutorial walkthrough UI.
+    ///
+    /// - Parameter completion: Executed when the tutorial view is dismissed.
     internal func handleWalkTrough(completion: (() -> Void)? = nil) {
         let tutorialView = TutorialView(onTutorialCompleted: {
             completion?()
@@ -65,6 +78,8 @@ final class SmartSpectraButtonViewModel: ObservableObject {
         UserDefaults.standard.set(true, forKey: "WalkthroughShown")
     }
     
+    /// Displays the hosted Terms of Service screen.
+    /// - Parameter completion: Executed after the agreement view is dismissed.
     private func presentUserAgreement(completion: (() -> Void)? = nil) {
         checkInternetConnectivity { [weak self] isConnected in
             DispatchQueue.main.async {
@@ -83,6 +98,8 @@ final class SmartSpectraButtonViewModel: ObservableObject {
         }
     }
     
+    /// Displays the hosted Privacy Policy screen.
+    /// - Parameter completion: Executed after the policy view is dismissed.
     private func presentPrivacyPolicy(completion: (() -> Void)? = nil) {
         checkInternetConnectivity { [weak self] isConnected in
             DispatchQueue.main.async {
@@ -101,6 +118,8 @@ final class SmartSpectraButtonViewModel: ObservableObject {
         }
     }
     
+    /// Checks whether the device currently has internet access.
+    /// - Parameter completion: Callback invoked with `true` when reachable.
     private func checkInternetConnectivity(completion: @escaping (Bool) -> Void) {
         guard let url = URL(string: "https://www.google.com") else {
             completion(false)
@@ -116,14 +135,19 @@ final class SmartSpectraButtonViewModel: ObservableObject {
         task.resume()
     }
     
+    /// Presents an alert indicating that network connectivity is unavailable.
     private func showNoInternetConnectionAlert() {
-        if let rootViewController = UIApplication.shared.windows.first?.rootViewController {
+        if let rootViewController = findViewController() {
             let alert = UIAlertController(title: "No Internet Connection", message: "Please check your internet connection and try again.", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
             rootViewController.present(alert, animated: true, completion: nil)
         }
     }
 
+    /// Opens an external link using `UIApplication`.
+    ///
+    /// - Parameter urlString: Fully qualified URL string.
+    /// - Note: Invalid URLs are ignored.
     func openSafari(withURL urlString: String) {
         guard let url = URL(string: urlString) else {
             return // Invalid URL, handle error or show an alert
@@ -132,6 +156,8 @@ final class SmartSpectraButtonViewModel: ObservableObject {
         UIApplication.shared.open(url, options: [:], completionHandler: nil)
     }
     
+    /// Presents an action sheet containing quick links to tutorials and legal
+    /// documents.
     @objc func showActionSheet() {
         let actionSheet = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
 
@@ -167,7 +193,8 @@ final class SmartSpectraButtonViewModel: ObservableObject {
         viewController?.present(actionSheet, animated: true, completion: nil)
     }
     
-    /// Handle SmartSpectra SDK initialization and present the screening page when the button is tapped.
+    /// Handles SmartSpectra SDK initialization and presents the screening page
+    /// when the record button is tapped.
     internal func smartSpectraButtonTapped() {
         
         // show tutorial first time the user taps the button
@@ -194,7 +221,7 @@ final class SmartSpectraButtonViewModel: ObservableObject {
         }
     }
 
-    /// Helper method to find the view controller in the view hierarchy.
+    /// Helper to locate the root view controller for presenting UIKit screens.
     private func findViewController() -> UIViewController? {
         guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = scene.windows.first,

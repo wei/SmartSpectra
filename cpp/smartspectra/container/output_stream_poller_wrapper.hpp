@@ -28,11 +28,14 @@
 
 namespace presage::smartspectra::container::output_stream_poller_wrapper {
 
+/** Lightweight RAII wrapper around MediaPipe's OutputStreamPoller. */
 class OutputStreamPollerWrapper {
 public:
     OutputStreamPollerWrapper();
     ~OutputStreamPollerWrapper();
+    /** Attach to a stream from the given graph. */
     absl::Status Initialize(mediapipe::CalculatorGraph& graph, const std::string& stream_name);
+    /** Access the underlying poller. */
     mediapipe::OutputStreamPoller& Get();
 private:
     mediapipe::OutputStreamPoller* stream_poller = nullptr;

@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 
+/// Displays the strict pulse and breathing rates after a measurement completes.
 struct SmartSpectraResultView: View {
     @ObservedObject private var sdk = SmartSpectraSwiftSDK.shared
 

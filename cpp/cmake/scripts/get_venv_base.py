@@ -1,5 +1,5 @@
 ###########################################################
-# get_venv_base.cmake
+# get_venv_base.py
 # Created by Greg on 2/14/2025.
 # Copyright (C) 2025 Presage Security, Inc.
 #
@@ -23,13 +23,45 @@ import sys
 PROGRAM_EXIT_FAILURE = 1
 
 def activate_venv(venv_path):
+    # Validate and sanitize the input path to prevent path traversal
+    venv_path = os.path.abspath(os.path.normpath(venv_path))
     activate_script = os.path.join(venv_path, 'bin', 'activate_this.py')
     if os.path.exists(activate_script):
-        with open(activate_script) as f:
-            exec(f.read(), {'__file__': activate_script})
+        # Validate that this is actually a virtual environment directory
+        if not os.path.isdir(venv_path) or not os.path.exists(os.path.join(venv_path, 'pyvenv.cfg')):
+            print(f"Path {venv_path} does not appear to be a valid virtual environment.")
+            sys.exit(PROGRAM_EXIT_FAILURE)
+
+        # More secure approach: check if we can update sys.path instead of executing arbitrary code
+        # Try multiple possible site-packages paths for cross-platform compatibility
+        possible_paths = [
+            # Unix/Linux/macOS
+            os.path.join(venv_path, 'lib', f'python{sys.version_info.major}.{sys.version_info.minor}', 'site-packages'),
+            # Windows
+            os.path.join(venv_path, 'Lib', 'site-packages'),
+            # Some conda environments
+            os.path.join(venv_path, 'lib', 'site-packages')
+        ]
+
+        site_packages = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                site_packages = path
+                break
+
+        if site_packages:
+            # Insert at beginning of sys.path to ensure venv packages take priority
+            sys.path.insert(0, site_packages)
+            # Set virtual env environment variables manually
+            os.environ['VIRTUAL_ENV'] = venv_path
+            if 'PYTHONHOME' in os.environ:
+                del os.environ['PYTHONHOME']
+        else:
+            print(f"Site-packages directory not found in {venv_path}. Tried: {', '.join(possible_paths)}")
+            sys.exit(PROGRAM_EXIT_FAILURE)
     else:
         print(f"Activation script {activate_script} not found.")
-        sys.exit(1)
+        sys.exit(PROGRAM_EXIT_FAILURE)
 
 def get_venv_base():
     if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):

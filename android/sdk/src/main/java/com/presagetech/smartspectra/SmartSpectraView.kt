@@ -10,6 +10,10 @@ import android.widget.Toast
 import com.presagetech.smartspectra.SmartSpectraSdk.Companion.isSupportedAbi
 import timber.log.Timber
 
+/**
+ * Composite view containing the measurement button and a simple result view.
+ * This can be added directly to your layout for a quick integration.
+ */
 class SmartSpectraView (
     context: Context,
     attrs: AttributeSet?

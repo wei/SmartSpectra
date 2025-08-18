@@ -7,7 +7,11 @@ import timber.log.Timber
 
 // Initializes SmartSpectraSdk at app startup
 @Suppress("unused")
-class SmartSpectraInitializer : Initializer<SmartSpectraSdk> {
+internal class SmartSpectraInitializer : Initializer<SmartSpectraSdk> {
+    /**
+     * Initializes [SmartSpectraSdk] and its authentication flow when the host
+     * application starts.
+     */
     override fun create(context: Context): SmartSpectraSdk {
         // Initialize Timber for logging
         if (Timber.forest().isEmpty()) {
@@ -21,11 +25,18 @@ class SmartSpectraInitializer : Initializer<SmartSpectraSdk> {
         AuthHandler.getInstance().startAuthWorkflow()
         return SmartSpectraSdk.getInstance()
     }
+    /** No library dependencies are required. */
     override fun dependencies(): List<Class<out Initializer<*>>> {
         // No dependencies on other libraries.
         return emptyList()
     }
 
+    /**
+     * Parses the optional `presage_services.xml` configuration file bundled in
+     * the host application.
+     *
+     * @return a map of configuration keys used to initialize authentication.
+     */
     private fun parsePresageServicesXml(context: Context): Map<String, Any?> {
         val resources = context.applicationContext.resources
         val resourceId = resources.getIdentifier("presage_services", "xml", context.packageName)

@@ -28,7 +28,7 @@ function(SmartSpectra_get_version_from_py_file PREFIX PY_FILE_PATH)
 
     if (DEFINED CMAKE_MATCH_5)
         set(${PREFIX}_VERSION_PRERELEASE ${CMAKE_MATCH_5})
-        set(${PREFIX}_VERSION_PRERELEASE_DEBIAN_POSTFIX "~rc${CMAKE_MATCH_5}")
+        set(${PREFIX}_VERSION_PRERELEASE_DEBIAN_POSTFIX "rc${CMAKE_MATCH_5}")
     else()
         set(${PREFIX}_VERSION_PRERELEASE "")
         set(${PREFIX}_VERSION_PRERELEASE_DEBIAN_POSTFIX "")
@@ -59,4 +59,26 @@ function(SmartSpectra_get_version_from_py_file PREFIX PY_FILE_PATH)
     set(${PREFIX}_VERSION ${${PREFIX}_VERSION} PARENT_SCOPE)
 
     message(STATUS "${PREFIX}_VERSION: ${${PREFIX}_VERSION}")
+endfunction()
+
+# Function to generate version header file
+function(SmartSpectra_generate_version_header PREFIX)
+    set(VERSION_HEADER_TEMPLATE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/templates/version.hpp.in")
+    set(VERSION_HEADER_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/smartspectra/version.hpp")
+    
+    # Create the smartspectra directory in build folder
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/smartspectra")
+    
+    # Configure the header file with version information
+    configure_file(
+        ${VERSION_HEADER_TEMPLATE}
+        ${VERSION_HEADER_OUTPUT}
+        @ONLY
+        FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+    )
+    
+    # Set output path in parent scope so it can be used for installation
+    set(${PREFIX}_VERSION_HEADER_PATH ${VERSION_HEADER_OUTPUT} PARENT_SCOPE)
+    
+    message(STATUS "Generated version header: ${VERSION_HEADER_OUTPUT}")
 endfunction()
