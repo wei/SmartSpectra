@@ -30,7 +30,10 @@ To get started, follow the instructions for one of our currently supported platf
   Supporting face-point analysis, iris tracking, blinking detection, and talking detection.
 
 - **Relative Blood Pressure Waveform**  
-  Relative blood pressure waveform (Contact support@presagetech.com for access)
+  Relative blood pressure real-time waveform (Contact support@presagetech.com for access)
+
+- **Electrodermal Activity**  
+  Electrodermal Activity real-time waveform (Contact support@presagetech.com for access)
 
 - **Integrated Quality Control**  
   Confidence and stability metrics providing insight into the confidence in the signal. User feedback on imaging conditions to support successful use.
